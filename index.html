@@ -168,7 +168,10 @@ label{font-size:14px;color:var(--ink-dim)}
   <!-- TOPBAR -->
   <div class="topbar">
     <div class="brand"><div class="mark">SE</div><div class="name">SEND</div></div>
-    <div class="clock"><div class="t" id="clk-t">--:--</div><div class="d" id="clk-d"></div></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn-ghost" style="padding:9px 12px;border-radius:12px;font-size:17px;line-height:1" onclick="openAdminGate()" title="Manager">⚙</button>
+      <div class="clock"><div class="t" id="clk-t">--:--</div><div class="d" id="clk-d"></div></div>
+    </div>
   </div>
 
   <!-- 1. SELECȚIE ECHIPĂ + ZONĂ -->
@@ -296,6 +299,67 @@ label{font-size:14px;color:var(--ink-dim)}
     <div id="final-list"></div>
   </section>
 
+  <!-- MANAGER · REMINDERE (protejat cu PIN) -->
+  <section id="s-admin" class="screen">
+    <h2 class="title">Manager · Remindere</h2>
+    <p class="sub">Adaugă, oprește sau modifică reminderele zilnice.</p>
+    <div id="admin-rem-list"></div>
+    <button class="btn-ghost" style="width:100%;margin:4px 0 10px" onclick="openReminderEditor(-1)">+ Adaugă reminder</button>
+    <button class="btn-ghost" style="width:100%" onclick="show('s-dash')">← Înapoi la dashboard</button>
+  </section>
+
+</div>
+
+<!-- PIN MODAL (acces manager) -->
+<div class="overlay" id="pin-overlay">
+  <div class="modal">
+    <div class="ring">🔒</div>
+    <div class="muted">Acces manager</div>
+    <h3 style="margin:6px 0 14px">Introdu codul PIN</h3>
+    <input type="password" inputmode="numeric" id="pin-input" maxlength="8" style="text-align:center;font-size:22px;letter-spacing:8px" placeholder="••••">
+    <div class="warnline" id="pin-error" style="display:none;text-align:center;margin-top:8px">Cod incorect.</div>
+    <div class="btn-row" style="margin-top:16px">
+      <button class="btn-ghost" onclick="closePinModal()">Anulează</button>
+      <button class="btn-primary" onclick="submitPin()">Confirmă</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDITOR REMINDER (adaugă / modifică) -->
+<div class="overlay" id="rem-edit-overlay">
+  <div class="modal" style="text-align:left;max-height:88vh;overflow:auto">
+    <h3 id="re-title" style="margin:0 0 14px">Reminder nou</h3>
+    <label>Text afișat</label>
+    <input id="re-text" placeholder="ex. Verifică toaletele" style="margin:6px 0 12px">
+    <label>Zonă</label>
+    <div id="re-zone" style="margin:6px 0 12px"></div>
+    <label>Tip răspuns</label>
+    <div id="re-type" style="margin:6px 0 12px"></div>
+    <div id="re-bad-wrap" style="display:none;margin-bottom:12px">
+      <label>Care răspuns e o problemă (apare în Semnalări)?</label>
+      <div id="re-bad" style="margin:6px 0"></div>
+    </div>
+    <label>Program</label>
+    <div class="btn-row" id="re-schedtype" style="margin:6px 0 12px"></div>
+    <div id="re-times-wrap">
+      <div id="re-times-list" style="margin-bottom:8px"></div>
+      <button class="btn-ghost" type="button" onclick="addTimeSlot()">+ Adaugă oră</button>
+    </div>
+    <div id="re-interval-wrap" style="display:none">
+      <div class="row"><label>La fiecare (minute)</label><input type="number" id="re-int-mins" style="width:90px"></div>
+      <div class="row"><label>De la ora</label><input type="number" id="re-int-from" style="width:90px" min="0" max="23"></div>
+      <div class="row"><label>Până la ora</label><input type="number" id="re-int-to" style="width:90px" min="1" max="24"></div>
+    </div>
+    <label style="display:block;margin:14px 0 6px">Zile active <span class="muted">(nimic bifat = în fiecare zi)</span></label>
+    <div id="re-days" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px"></div>
+    <label style="display:flex;align-items:center;gap:8px;margin-top:12px;cursor:pointer">
+      <input type="checkbox" id="re-sound" style="width:auto"> Cu sunet de alarmă
+    </label>
+    <div class="btn-row" style="margin-top:18px">
+      <button class="btn-ghost" onclick="closeReminderEditor()">Anulează</button>
+      <button class="btn-primary" onclick="saveReminderEditor()">Salvează</button>
+    </div>
+  </div>
 </div>
 
 <!-- GATE BAR (shared) -->
@@ -331,7 +395,6 @@ label{font-size:14px;color:var(--ink-dim)}
 const CONFIG = {
   BACKEND_URL: "",                 // URL-ul web app Apps Script (gol = doar local)
   PRODUCTS_SHEET_ID: "1kz0Yy-vcJ6MYTqJgt9D3zMHNg84AQppFVTk6do-5Hj8",
-  MANAGER_PIN: "1234",
   EMAIL_TO: "",                    // destinatarul raportului (se setează în backend ideal)
   PROC1_RO: "https://docs.google.com/document/d/1rloElnoUBvWX1DszxxtmNJ4lHnaHG9urOu2RZp0OZjw/edit",
   PROC1_EN: "https://docs.google.com/document/d/1uwxfEEfdOssVaehEmvM9NwA9Q0rKUIhUBUBaZwvLyc0/edit"
@@ -372,6 +435,17 @@ const REMINDERS = [
   {id:"tel", t:"A stat cineva pe telefon cât au fost mese ocupate?", type:"yesno", bad:"Da", zone:"Toți", interval:60, from:8, to:24, sound:true},
   {id:"cur", t:"Verificare curățenie (bar, bucătărie, terasă, interior, baie)", type:"photo", zone:"Toți", times:["12:00","17:00","22:30"], sound:true}
 ];
+
+/* Lista de remindere e editabilă din interfață (PIN manager) — versiunea
+   curentă, cu eventualele modificări, se ține separat în localStorage;
+   REMINDERS de mai sus rămâne sursa implicită la prima rulare. */
+const REM_KEY="send_reminders_v1";
+function loadReminders(){
+  try{const raw=localStorage.getItem(REM_KEY);if(raw)return JSON.parse(raw);}catch(e){}
+  return JSON.parse(JSON.stringify(REMINDERS));
+}
+let REM=loadReminders();
+function persistReminders(){localStorage.setItem(REM_KEY,JSON.stringify(REM));}
 
 const PRODUCTS_FALLBACK = {
   "Fructe + Verdeață":["Lămâi","Lime","Portocale","Mentă","Banane"],
@@ -524,8 +598,8 @@ function renderDash(){
   const t=$("dash-team");t.innerHTML="";
   S.team.forEach(p=>{const zl=(ZONES.find(z=>z[0]===p.zone)||["","?"])[1];
     const s=document.createElement("span");s.className="pill";s.textContent=p.name+" · "+zl;t.appendChild(s);});
-  const pending=REMINDERS.length;
-  $("dash-rem").textContent="🔔 remindere active";
+  const pending=REM.filter(r=>r.active!==false).length;
+  $("dash-rem").textContent="🔔 "+pending+" remindere active";
 }
 
 /* ============================================================
@@ -797,7 +871,8 @@ function startReminders(){ if(remTimer)return; remTimer=setInterval(remCheck,300
 function hm(d){return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");}
 function remCheck(){
   const d=new Date(),now=hm(d),dow=d.getDay(),h=d.getHours(),m=d.getMinutes();
-  REMINDERS.forEach(r=>{
+  REM.forEach(r=>{
+    if(r.active===false)return;
     if(r.days&&!r.days.includes(dow))return;
     let fire=false;
     if(r.times&&r.times.includes(now))fire=true;
@@ -853,6 +928,167 @@ function showReminder(r){
   }
   $("rem-overlay").classList.add("show");
   if(r.sound)beep();
+}
+
+/* ============================================================
+   ACCES MANAGER (PIN) + EDITARE REMINDERE
+   ============================================================ */
+let pinCallback=null;
+function askManagerPin(onSuccess){
+  pinCallback=onSuccess;
+  $("pin-input").value="";
+  $("pin-error").style.display="none";
+  $("pin-overlay").classList.add("show");
+  setTimeout(()=>$("pin-input").focus(),50);
+}
+function closePinModal(){ $("pin-overlay").classList.remove("show"); pinCallback=null; }
+async function submitPin(){
+  const pin=$("pin-input").value.trim();
+  if(!pin)return;
+  if(!CONFIG.BACKEND_URL){
+    toast("Fără backend configurat — accesul manager nu e protejat de PIN.");
+    const cb=pinCallback;closePinModal();if(cb)cb();
+    return;
+  }
+  const res=await backend("verifyPin",{pin});
+  if(res&&res.valid){ const cb=pinCallback;closePinModal();if(cb)cb(); }
+  else { $("pin-error").style.display="block"; }
+}
+function openAdminGate(){
+  askManagerPin(()=>{ renderAdminReminders(); show("s-admin"); });
+}
+function selKV(pairs,val,ph,on){const s=document.createElement("select");s.style.flex="1";
+  s.innerHTML=(ph?'<option value="">'+ph+'</option>':"")+pairs.map(([v,l])=>'<option value="'+v+'"'+(v===val?" selected":"")+'>'+l+'</option>').join("");
+  s.onchange=()=>on(s.value);return s;}
+
+let delConfirm={};
+function renderAdminReminders(){
+  const c=$("admin-rem-list");c.innerHTML="";
+  if(!REM.length){c.innerHTML='<p class="muted">Niciun reminder momentan.</p>';return;}
+  REM.forEach((r,i)=>{
+    const off=r.active===false;
+    const sch=r.times?r.times.join(", "):("la fiecare "+r.interval+" min, "+String(r.from).padStart(2,"0")+":00–"+String(r.to).padStart(2,"0")+":00");
+    const days=r.days&&r.days.length?r.days.map(d=>DAY_NAMES[d].slice(0,3)).join(", "):"zilnic";
+    const card=document.createElement("div");card.className="card";
+    card.innerHTML='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">'+
+      '<div><div style="font-weight:600">'+r.t+'</div>'+
+      '<div class="muted" style="font-size:12px;margin-top:3px">'+r.zone+' · '+sch+' · '+days+'</div></div>'+
+      '<span class="pill '+(off?"bad":"ok")+'" style="flex:none">'+(off?"Oprit":"Activ")+'</span></div>';
+    const row=document.createElement("div");row.className="btn-row";row.style.marginTop="10px";
+    const tgl=document.createElement("button");tgl.className="btn-ghost";tgl.textContent=off?"Pornește":"Oprește";
+    tgl.onclick=()=>{r.active=off?true:false;persistReminders();renderAdminReminders();renderDash();};
+    const ed=document.createElement("button");ed.className="btn-ghost";ed.textContent="Modifică";
+    ed.onclick=()=>openReminderEditor(i);
+    const del=document.createElement("button");del.className="btn-ghost";
+    const confirming=!!delConfirm[r.id];
+    del.textContent=confirming?"Sigur?":"Șterge";
+    if(confirming)del.style.cssText="color:var(--bad);border-color:var(--bad)";
+    del.onclick=()=>{
+      if(delConfirm[r.id]){
+        REM.splice(i,1);persistReminders();delConfirm={};renderAdminReminders();renderDash();toast("Reminder șters.");
+      } else {
+        delConfirm={};delConfirm[r.id]=true;renderAdminReminders();
+        setTimeout(()=>{delete delConfirm[r.id];renderAdminReminders();},3000);
+      }
+    };
+    row.append(tgl,ed,del);card.appendChild(row);c.appendChild(card);
+  });
+}
+
+const RESPONSE_TYPES=[["done","Bifare (am făcut)"],["yesno","Da / Nu"],["photo","Poză"]];
+let reDraft=null, reEditIndex=-1;
+function openReminderEditor(i){
+  reEditIndex=i;
+  if(i>=0) reDraft=JSON.parse(JSON.stringify(REM[i]));
+  else reDraft={id:"r"+Date.now(),t:"",type:"done",zone:"Toți",sound:false,days:[]};
+  reDraft.schedType=reDraft.schedType||(reDraft.interval?"interval":"times");
+  if(!reDraft.times)reDraft.times=["09:00"];
+  if(reDraft.interval==null)reDraft.interval=60;
+  if(reDraft.from==null)reDraft.from=8;
+  if(reDraft.to==null)reDraft.to=22;
+  if(!reDraft.days)reDraft.days=[];
+  if(reDraft.type==="yesno"&&!reDraft.bad)reDraft.bad="Nu";
+  $("re-title").textContent=i>=0?"Modifică reminder":"Reminder nou";
+  renderReminderEditorForm();
+  $("rem-edit-overlay").classList.add("show");
+}
+function renderReminderEditorForm(){
+  $("re-text").value=reDraft.t;
+  $("re-text").oninput=()=>reDraft.t=$("re-text").value;
+
+  const zw=$("re-zone");zw.innerHTML="";
+  const zi=document.createElement("input");zi.value=reDraft.zone;zi.placeholder="ex. Bar, Sală, Toți";
+  zi.oninput=()=>reDraft.zone=zi.value;
+  zw.appendChild(zi);
+
+  const tw=$("re-type");tw.innerHTML="";
+  tw.appendChild(selKV(RESPONSE_TYPES,reDraft.type,null,v=>{
+    reDraft.type=v;
+    if(v==="yesno"&&!reDraft.bad)reDraft.bad="Nu"; else if(v!=="yesno")delete reDraft.bad;
+    renderReminderEditorForm();
+  }));
+  $("re-bad-wrap").style.display=reDraft.type==="yesno"?"block":"none";
+  if(reDraft.type==="yesno"){
+    const bw=$("re-bad");bw.innerHTML="";
+    bw.appendChild(selKV([["Da","Da"],["Nu","Nu"]],reDraft.bad||"Nu",null,v=>reDraft.bad=v));
+  }
+
+  const sw=$("re-schedtype");sw.innerHTML="";
+  [["times","Ore fixe"],["interval","Interval"]].forEach(([v,l])=>{
+    const b=document.createElement("button");b.type="button";b.textContent=l;
+    b.className=reDraft.schedType===v?"btn-primary":"btn-ghost";
+    b.onclick=()=>{reDraft.schedType=v;renderReminderEditorForm();};
+    sw.appendChild(b);
+  });
+  $("re-times-wrap").style.display=reDraft.schedType==="times"?"block":"none";
+  $("re-interval-wrap").style.display=reDraft.schedType==="interval"?"block":"none";
+  if(reDraft.schedType==="times"){
+    const tl=$("re-times-list");tl.innerHTML="";
+    reDraft.times.forEach((tm,i)=>{
+      const row=document.createElement("div");row.style.cssText="display:flex;gap:8px;margin-bottom:8px;align-items:center";
+      const inp=document.createElement("input");inp.type="time";inp.value=tm;inp.style.flex="1";
+      inp.onchange=()=>reDraft.times[i]=inp.value;
+      const rm=document.createElement("button");rm.className="btn-ghost";rm.textContent="✕";rm.style.cssText="width:42px;flex:none";
+      rm.onclick=()=>{reDraft.times.splice(i,1);if(!reDraft.times.length)reDraft.times.push("09:00");renderReminderEditorForm();};
+      row.append(inp,rm);tl.appendChild(row);
+    });
+  } else {
+    const mi=$("re-int-mins");mi.value=reDraft.interval;mi.oninput=()=>reDraft.interval=num(mi.value);
+    const fi=$("re-int-from");fi.value=reDraft.from;fi.oninput=()=>reDraft.from=num(fi.value);
+    const ti=$("re-int-to");ti.value=reDraft.to;ti.oninput=()=>reDraft.to=num(ti.value);
+  }
+
+  const dw=$("re-days");dw.innerHTML="";
+  DAY_NAMES.forEach((name,i)=>{
+    const on=reDraft.days.includes(i);
+    const b=document.createElement("button");b.type="button";b.textContent=name.slice(0,3);
+    b.style.cssText="padding:6px 14px;font-size:12px;border-radius:20px;font-weight:600;"+
+      (on?"background:var(--accent);color:var(--accent-ink);border:1px solid var(--accent)"
+         :"background:var(--surface-2);border:1px solid var(--line);color:var(--ink-dim)");
+    b.onclick=()=>{const p=reDraft.days.indexOf(i);if(p>=0)reDraft.days.splice(p,1);else reDraft.days.push(i);renderReminderEditorForm();};
+    dw.appendChild(b);
+  });
+
+  $("re-sound").checked=!!reDraft.sound;
+  $("re-sound").onchange=()=>reDraft.sound=$("re-sound").checked;
+}
+function addTimeSlot(){ reDraft.times.push("09:00"); renderReminderEditorForm(); }
+function closeReminderEditor(){ $("rem-edit-overlay").classList.remove("show"); reDraft=null; }
+function saveReminderEditor(){
+  if(!reDraft.t.trim()){toast("Scrie textul reminderului.");return;}
+  if(!reDraft.zone.trim()){toast("Completează zona.");return;}
+  const r={id:reDraft.id, t:reDraft.t.trim(), type:reDraft.type, zone:reDraft.zone.trim(), sound:!!reDraft.sound};
+  if(reDraft.type==="yesno")r.bad=reDraft.bad||"Nu";
+  if(reDraft.schedType==="times")r.times=reDraft.times.slice();
+  else { r.interval=reDraft.interval; r.from=reDraft.from; r.to=reDraft.to; }
+  if(reDraft.days.length)r.days=reDraft.days.slice();
+  if(reEditIndex>=0){ if(REM[reEditIndex].active===false)r.active=false; REM[reEditIndex]=r; }
+  else REM.push(r);
+  persistReminders();
+  closeReminderEditor();
+  renderAdminReminders();
+  renderDash();
+  toast("Reminder salvat.");
 }
 
 /* ============================================================

@@ -23,6 +23,7 @@ function doPost(e) {
     switch (req.action) {
       case "getProducts": out.products = getProducts(req.sheetId || CONFIG.PRODUCTS_SHEET_ID); break;
       case "uploadPhoto": out.url = savePhoto(req.photo, req.categorie, req.fereastra, req.date); break;
+      case "verifyPin":   out.valid = (String(req.pin || "") === getManagerPin()); break;
       case "sendEmail":   sendShiftEmail(req.state); break;
       case "autosave":    saveState(req.date, req.state); break;
       default:            logRow(req.action, req);   // saveShift / saveMorning / saveInventory / ...
@@ -35,6 +36,15 @@ function doPost(e) {
 
 function json(o) {
   return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
+}
+
+/* ---------- PIN manager ----------
+ * Setare: Apps Script editor → Setări proiect → Script Properties →
+ * adaugă cheia MANAGER_PIN. Dacă lipsește, se folosește valoarea implicită.
+ */
+function getManagerPin() {
+  var p = PropertiesService.getScriptProperties().getProperty("MANAGER_PIN");
+  return p || "1234";
 }
 
 /* ---------- Drive: foldere ---------- */

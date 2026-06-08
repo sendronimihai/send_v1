@@ -30,6 +30,7 @@ Categoria se poate repeta pe fiecare rând. Primul rând e antet. Atât — cân
 1. Mergi pe [script.google.com](https://script.google.com) → **New project**.
 2. Șterge tot și lipește conținutul din `Code.gs`.
 3. Sus în `CONFIG`, completează **`REPORT_EMAIL`** cu adresa unde vrei raportul. Verifică și `PRODUCTS_SHEET_ID`.
+3b. **PIN-ul de manager:** în editorul Apps Script → ⚙ **Project Settings** → secțiunea **Script Properties** → **Add script property** → cheia `MANAGER_PIN`, valoarea fiind codul dorit (ex. `1234`). Dacă nu adaugi nimic, rămâne implicit `1234`. PIN-ul nu mai există nicăieri în `index.html` — e verificat doar pe server.
 4. **Deploy → New deployment** → tip **Web app**:
    - *Execute as:* **Me**
    - *Who has access:* **Anyone**
@@ -50,7 +51,7 @@ const CONFIG = {
 };
 ```
 
-Tot acolo poți schimba `MANAGER_PIN` (PIN-ul de manager).
+> PIN-ul de manager se setează **în backend** (vezi pasul 3b mai sus), nu în `index.html` — așa rămâne ascuns clienților aplicației.
 
 ---
 
@@ -86,8 +87,9 @@ Tot acolo poți schimba `MANAGER_PIN` (PIN-ul de manager).
 ## Note și limitări (de știut)
 
 - **Remindere & sunet:** funcționează cât aplicația e deschisă pe tabletă (cazul tău — tableta stă în locație). Notificări când app-ul e complet închis ar necesita un pas în plus.
-- **PIN-ul de manager** e momentan în cod (client). Pentru securitate reală, mutarea lui în backend e un pas ușor de făcut ulterior.
+- **PIN-ul de manager** e verificat de backend (`MANAGER_PIN` din Script Properties). Apăsarea ⚙ din aplicație cere PIN-ul înainte de a deschide ecranul de administrare a reminderelor. Fără `BACKEND_URL` configurat, accesul nu poate fi protejat — aplicația afișează un avertisment și lasă accesul deschis.
 - **Pozele** se urcă în Drive doar cu backend-ul setat; structura `Poze/[Categorie]/[Data]/[Fereastra]/` se creează automat.
+- **Reminderele** sunt editabile din aplicație (⚙ → Manager · Remindere): poți adăuga, opri/porni, modifica sau șterge orice reminder. Lista personalizată se ține în `localStorage`, separat de cea implicită din cod.
 
 ---
 
@@ -97,6 +99,5 @@ Tot acolo poți schimba `MANAGER_PIN` (PIN-ul de manager).
 - Itemizarea pregătirii de bar de dimineață
 - Verificare Total Z vs Z printat
 - Diferență casă (numărat fizic vs sold), observații pentru mâine
-- Editarea reminderelor din interfață, protejată cu PIN
 
 Dă acest folder + `SEND_Specificatie_Aplicatie.md` lui Claude Code și poți construi mai departe oricare dintre ele.

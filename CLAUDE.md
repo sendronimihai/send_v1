@@ -39,19 +39,10 @@ SEND_Specificatie_Aplicatie.md → specificația completă
 - Lista de produse vine din Sheet (col A = Categorie, col B = Produs); editarea Sheet-ului actualizează aplicația.
 
 ## Stare actuală (implementat)
-Toate ecranele, fluxul complet, porțile, motorul de remindere (în-app, cu sunet), reconcilierea casei, checklist-ul final, backend-ul (date/poze/email), PWA instalabilă.
+Toate ecranele, fluxul complet, porțile, motorul de remindere (în-app, cu sunet, editabile din interfață cu PIN de manager), reconcilierea casei (incl. Z printat vs calculat, sold numărat fizic), checklist-ul final, recepție marfă, backend-ul (date/poze/email/PIN), PWA instalabilă.
 
 ## De făcut / deschise (pot fi cerute pe rând)
-- Pornire muzică (reminder zilnic la deschidere)
-- Încărcare POS + telefon ca task separat de seară
-- Etichetare/FIFO la bar (zilnic)
-- Buton „Recepție marfă"
-- Itemizarea pregătirii de bar de dimineață (în loc de o singură întrebare „Procedura 1")
-- Verificare Total Z calculat vs Z printat
-- Diferență casă (numărat fizic vs sold final) + observații pentru mâine
-- Mutarea PIN-ului de manager în backend (securitate)
-- Editarea reminderelor din interfață, protejată cu PIN
-- Notificări când aplicația e închisă (necesită mecanism suplimentar)
+- Notificări când aplicația e închisă (necesită mecanism suplimentar; utilizatorul instalează separat o aplicație kiosk)
 
 ## Cum se testează rapid
 Deschide `index.html` într-un browser. Merge standalone (local). Pentru poze/email, completează `CONFIG.BACKEND_URL` cu URL-ul Web App din Apps Script.
