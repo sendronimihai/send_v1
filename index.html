@@ -311,7 +311,7 @@ const TEAM = ["Cipri","Samir","Bishma","Asmita","Ranjana","Sushma","Sujata"];
 const ZONES = [["bar","Bar"],["sala","Sală"],["bucatarie","Bucătărie"]];
 
 const MORNING = {
-  barsala: { titlu:"BAR / TERASĂ / SALĂ", zones:["bar","sala"], items:["A fost făcută verificarea conform procedurii nr. 1?"], text:"Lipsește ceva?" },
+  barsala: { titlu:"BAR / TERASĂ / SALĂ", zones:["bar","sala"], proc1:true, items:["Pregătire sirop","Pregătire suc lămâie","Pregătire matcha","Pregătire ceai Galaxy","Pregătire fructe deshidratate","Pregătire coji SEND"], text:"Lipsește ceva?" },
   bucatarie: { titlu:"BUCĂTĂRIE", zones:["bucatarie"], items:["Aprins cuptorul","Verificare temperatură frigidere","Verificare / completare etichete produse desfăcute","Pregătire salam / mozzarella","Curat înainte de a începe ziua"] }
 };
 
@@ -449,18 +449,18 @@ function renderMorning(){
     if(!sec.zones.some(z=>activeZones().includes(z)))return; // zona fara personal -> nu apare
     const card=document.createElement("div");card.className="card";
     card.innerHTML='<h3>'+sec.titlu+'</h3>';
+    if(sec.proc1){
+      const links=document.createElement("div");links.style.margin="-2px 0 10px";
+      links.innerHTML='<a class="pill info" href="'+CONFIG.PROC1_RO+'" target="_blank" style="text-decoration:none">📄 Procedura 1 · RO</a> '+
+                      '<a class="pill" href="'+CONFIG.PROC1_EN+'" target="_blank" style="text-decoration:none">EN</a>';
+      card.appendChild(links);
+    }
     sec.items.forEach((it,i)=>{
       const k=key+"_"+i, done=!!S.morning[k];
       const row=document.createElement("div");row.className="chk"+(done?" done":"");
       row.innerHTML='<div class="box">'+(done?"✓":"")+'</div><div class="lbl">'+it+'</div>';
       row.onclick=()=>{S.morning[k]=!S.morning[k];save();renderMorning();};
       card.appendChild(row);
-      if(key==="barsala"&&i===0){
-        const links=document.createElement("div");links.style.padding="0 0 6px 38px";
-        links.innerHTML='<a class="pill info" href="'+CONFIG.PROC1_RO+'" target="_blank" style="text-decoration:none">📄 Procedura 1 · RO</a> '+
-                        '<a class="pill" href="'+CONFIG.PROC1_EN+'" target="_blank" style="text-decoration:none">EN</a>';
-        card.appendChild(links);
-      }
     });
     if(sec.text!==undefined){
       const wrap=document.createElement("div");wrap.style.marginTop="8px";
