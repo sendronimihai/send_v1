@@ -335,12 +335,15 @@ const DAY_TASKS = {
 const DAY_NAMES=["Duminică","Luni","Marți","Miercuri","Joi","Vineri","Sâmbătă"];
 
 const REMINDERS = [
+  {id:"muzica", t:"Pornește muzica", type:"done", zone:"Bar", times:["09:00"], sound:false},
+  {id:"fifo", t:"Etichetare și rotație FIFO produse desfăcute la bar", type:"done", zone:"Bar", times:["09:00"], sound:false},
   {id:"toalete", t:"Verifică toaletele", type:"done", zone:"Sală", interval:120, from:10, to:22, sound:true},
   {id:"frig", t:"Verifică frigiderele", type:"done", zone:"Bar + Bucătărie", times:["11:00","17:00"], sound:false},
   {id:"cross", t:"Cross-check bar", type:"done", zone:"Bar", times:["09:45"], sound:false},
   {id:"stocp", t:"Verificare stoc prânz (suc lămâie, felii lămâie+mentă, cafea ice coffee, lime, matcha, ceai Galaxy)", type:"done", zone:"Bar", times:["15:00"], sound:true},
   {id:"kara", t:"Pregătire karaoke", type:"done", zone:"Toți", times:["11:00"], days:[5], sound:true},
   {id:"mic", t:"Pune microfoanele la încărcat", type:"done", zone:"Bar", times:["10:00"], days:[5], sound:true},
+  {id:"incarcare", t:"Pune POS-ul, telefonul și tableta la încărcat", type:"done", zone:"Toți", times:["22:00"], sound:true},
   {id:"seara", t:"Începe curățenia de seară", type:"done", zone:"Toți", times:["23:00"], sound:true},
   {id:"prez", t:"Avem personal unde sunt clienții?", type:"yesno", bad:"Nu", zone:"Toți", interval:60, from:8, to:24, sound:true},
   {id:"tel", t:"A stat cineva pe telefon cât au fost mese ocupate?", type:"yesno", bad:"Da", zone:"Toți", interval:60, from:8, to:24, sound:true},
