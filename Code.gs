@@ -139,12 +139,21 @@ function sendShiftEmail(state) {
   // casă
   if (s.cash) {
     var c = s.cash;
-    html.push("<h3>Casă (Raport Z)</h3><ul>" +
-      "<li>Cash: " + ron(c.cash) + " · Card: " + ron(c.card) + " · Ia loc.: " + ron(c.ialoc) + "</li>" +
-      "<li><b>Total Z: " + ron(c.ztot) + "</b></li>" +
-      "<li>Sold ziua precedentă: " + ron(c.soldPrev) + "</li>" +
-      "<li>Valoare cash: " + ron(c.valCash) + " · Plăți cash: " + ron(c.platiCash) + "</li>" +
-      "<li><b>Sold final: " + ron(c.soldFinal) + "</b></li></ul>");
+    var diffTxt = function (given, calc) {
+      var d = given - calc;
+      return Math.abs(d) < 0.01 ? " — corespunde ✓" : " — diferență " + (d > 0 ? "+" : "") + ron(d) + " ⚠";
+    };
+    var rows = [
+      "Cash: " + ron(c.cash) + " · Card: " + ron(c.card) + " · Ia loc.: " + ron(c.ialoc),
+      "<b>Total Z (calculat): " + ron(c.ztot) + "</b>"
+    ];
+    if (c.zPrinted != null) rows.push("Z printat: " + ron(c.zPrinted) + diffTxt(c.zPrinted, c.ztot));
+    rows.push("Sold ziua precedentă: " + ron(c.soldPrev));
+    rows.push("Valoare cash: " + ron(c.valCash) + " · Plăți cash: " + ron(c.platiCash));
+    rows.push("<b>Sold final: " + ron(c.soldFinal) + "</b>");
+    if (c.cashCounted != null) rows.push("Numărat fizic în casă: " + ron(c.cashCounted) + diffTxt(c.cashCounted, c.soldFinal));
+    if (c.notes) rows.push("Observații pentru mâine: " + c.notes);
+    html.push("<h3>Casă (Raport Z)</h3><ul><li>" + rows.join("</li><li>") + "</li></ul>");
   }
 
   // consum & pierderi

@@ -247,7 +247,9 @@ label{font-size:14px;color:var(--ink-dim)}
       <div class="row"><label>Cash</label><input type="number" id="z_cash" oninput="calcCash()" style="width:130px" placeholder="0"></div>
       <div class="row"><label>Card</label><input type="number" id="z_card" oninput="calcCash()" style="width:130px" placeholder="0"></div>
       <div class="row"><label>Ia loc.</label><input type="number" id="z_ialoc" oninput="calcCash()" style="width:130px" placeholder="0"></div>
-      <div class="result calc"><span>Total Raport Z</span><span class="v" id="z_total">0,00 RON</span></div>
+      <div class="result calc"><span>Total Raport Z (calculat)</span><span class="v" id="z_total">0,00 RON</span></div>
+      <div class="row"><label>Z printat <span class="muted">(de pe bon)</span></label><input type="number" id="z_printed" oninput="calcCash()" style="width:130px" placeholder="0"></div>
+      <div id="z_check"></div>
     </div>
     <div class="card">
       <div class="sec-label">Reconciliere casă</div>
@@ -255,6 +257,12 @@ label{font-size:14px;color:var(--ink-dim)}
       <div class="result calc"><span>Valoare cash <span class="muted">(sold prec. + Z cash)</span></span><span class="v" id="val_cash">0,00 RON</span></div>
       <div class="row"><label>Plăți cash (ieșiri)</label><input type="number" id="plati_cash" oninput="calcCash()" style="width:130px" placeholder="0"></div>
       <div class="result final"><span>Sold final <span class="muted">(valoare − plăți)</span></span><span class="v" id="sold_final">0,00 RON</span></div>
+      <div class="row"><label>Numărat fizic în casă</label><input type="number" id="cash_counted" oninput="calcCash()" style="width:130px" placeholder="0"></div>
+      <div id="cash_check"></div>
+    </div>
+    <div class="card">
+      <div class="sec-label">Observații pentru mâine</div>
+      <textarea id="cash_notes" placeholder="Ex. lipsă mărunt, diferență de numărat, ce trebuie verificat..." oninput="calcCash()"></textarea>
     </div>
   </section>
 
@@ -592,12 +600,24 @@ function lossDone(){return true;} // completarea e liberă; poarta cere doar tre
 /* ============================================================
    7. RECONCILIERE CASĂ
    ============================================================ */
+function diffPill(elId,rawInput,calc,label){
+  const el=$(elId);
+  if(rawInput===""){el.innerHTML="";return null;}
+  const given=num(rawInput),diff=given-calc;
+  if(Math.abs(diff)<0.01) el.innerHTML='<span class="pill ok">✓ '+label+' — corespunde</span>';
+  else el.innerHTML='<span class="pill warn">⚠ '+label+' — diferență '+(diff>0?"+":"")+fmt(diff)+'</span>';
+  return given;
+}
 function calcCash(){
   const cash=num($("z_cash").value),card=num($("z_card").value),ialoc=num($("z_ialoc").value);
   const ztot=cash+card+ialoc;$("z_total").textContent=fmt(ztot);
+  const zPrinted=diffPill("z_check",$("z_printed").value,ztot,"Z calculat vs. printat");
   const sp=num($("sold_prev").value);const valc=sp+cash;$("val_cash").textContent=fmt(valc);
   const pc=num($("plati_cash").value);const sf=valc-pc;$("sold_final").textContent=fmt(sf);
-  S.cash={cash,card,ialoc,ztot,soldPrev:sp,valCash:valc,platiCash:pc,soldFinal:sf};save();
+  const counted=diffPill("cash_check",$("cash_counted").value,sf,"Numărat fizic vs. sold final");
+  S.cash={cash,card,ialoc,ztot,zPrinted,soldPrev:sp,valCash:valc,platiCash:pc,soldFinal:sf,
+          cashCounted:counted,notes:$("cash_notes").value};
+  save();
   gateFor("s-cash");
 }
 function cashDone(){const k=S.cash;return k&&($("z_cash").value!==""||$("z_card").value!==""||$("z_ialoc").value!=="")&&$("sold_prev").value!=="";}
