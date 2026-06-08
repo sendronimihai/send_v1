@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1c1a17">
+<title>SEND</title>
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap" rel="stylesheet">
+<style>
+/* ====================== SEND — design tokens ====================== */
+:root{
+  --bg:#16140f;            /* espresso închis */
+  --surface:#211e18;
+  --surface-2:#2b2720;
+  --line:#3a352c;
+  --ink:#f3ede1;           /* crem */
+  --ink-dim:#b3a994;
+  --ink-faint:#8a8170;
+  --accent:#e0a458;        /* chihlimbar */
+  --accent-ink:#16140f;
+  --ok:#7fbf7f;
+  --ok-bg:#1f2b1f;
+  --warn:#e6b455;
+  --warn-bg:#2e2716;
+  --bad:#e08a6e;
+  --bad-bg:#2e1f19;
+  --info:#8fb8c9;
+  --r:14px;
+  --r-sm:10px;
+  --font-display:"Fraunces",Georgia,serif;
+  --font-body:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{
+  background:var(--bg);color:var(--ink);font-family:var(--font-body);
+  font-size:17px;line-height:1.45;-webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+h1,h2,h3{font-family:var(--font-display);font-weight:500;margin:0}
+.app{max-width:920px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
+.screen{display:none;flex:1;padding:18px 16px 110px}
+.screen.active{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* topbar */
+.topbar{position:sticky;top:0;z-index:30;background:linear-gradient(180deg,var(--bg),rgba(22,20,15,.85));
+  backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px}
+.brand .mark{width:40px;height:40px;border-radius:11px;background:var(--accent);color:var(--accent-ink);
+  display:grid;place-items:center;font-family:var(--font-display);font-weight:600;font-size:19px}
+.brand .name{font-family:var(--font-display);font-size:21px;letter-spacing:.5px}
+.clock{text-align:right;line-height:1.2}
+.clock .t{font-family:var(--font-display);font-size:20px}
+.clock .d{font-size:12px;color:var(--ink-dim)}
+
+h2.title{font-size:27px;margin:6px 0 2px;letter-spacing:.3px}
+.sub{color:var(--ink-dim);font-size:14px;margin:0 0 18px}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:14px}
+.card h3{font-size:16px;letter-spacing:.4px;margin-bottom:4px}
+.muted{color:var(--ink-dim);font-size:13px}
+
+/* buttons */
+button{font-family:var(--font-body);font-size:16px;cursor:pointer;border:none;border-radius:var(--r-sm);
+  background:var(--surface-2);color:var(--ink);padding:13px 16px;transition:.12s}
+button:active{transform:scale(.98)}
+.btn-primary{background:var(--accent);color:var(--accent-ink);font-weight:600;width:100%;padding:17px;font-size:17px;border-radius:var(--r)}
+.btn-primary:disabled{background:var(--surface-2);color:var(--ink-faint);cursor:not-allowed}
+.btn-ghost{background:var(--surface-2);border:1px solid var(--line)}
+.btn-row{display:flex;gap:10px}
+.btn-row>*{flex:1}
+
+input,textarea,select{font-family:var(--font-body);font-size:16px;background:var(--surface-2);
+  color:var(--ink);border:1px solid var(--line);border-radius:var(--r-sm);padding:12px}
+input,textarea{width:100%}
+textarea{resize:vertical;min-height:64px}
+input[type=number]{text-align:center}
+label{font-size:14px;color:var(--ink-dim)}
+
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:4px 10px;border-radius:999px;
+  background:var(--surface-2);color:var(--ink-dim)}
+.pill.ok{background:var(--ok-bg);color:var(--ok)}
+.pill.warn{background:var(--warn-bg);color:var(--warn)}
+.pill.bad{background:var(--bad-bg);color:var(--bad)}
+.pill.info{background:#1c2730;color:var(--info)}
+
+/* selectable chips */
+.chip{display:flex;align-items:center;gap:11px;padding:14px;border-radius:var(--r-sm);
+  border:1px solid var(--line);background:var(--surface);cursor:pointer}
+.chip.on{border-color:var(--accent);background:#2a2418}
+.dot{width:22px;height:22px;border-radius:50%;border:2px solid var(--ink-faint);flex:none}
+.chip.on .dot{border-color:var(--accent);background:var(--accent);box-shadow:inset 0 0 0 3px #2a2418}
+.zones{display:flex;gap:6px;margin-top:10px}
+.zones button{flex:1;padding:9px 4px;font-size:14px;background:var(--surface);border:1px solid var(--line);color:var(--ink-dim)}
+.zones button.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+
+/* checklist row */
+.chk{display:flex;align-items:center;gap:12px;padding:14px 0;border-top:1px solid var(--line);cursor:pointer}
+.chk:first-of-type{border-top:none}
+.box{width:26px;height:26px;border-radius:7px;border:2px solid var(--ink-faint);flex:none;display:grid;place-items:center;font-size:16px}
+.chk.done .box{background:var(--ok);border-color:var(--ok);color:var(--bg)}
+.chk.done .lbl{color:var(--ink-dim);text-decoration:line-through}
+.lbl{flex:1}
+
+/* gate bar */
+.gate{position:fixed;left:0;right:0;bottom:0;z-index:25;max-width:920px;margin:0 auto;
+  background:var(--surface);border-top:1px solid var(--line);padding:12px 16px;
+  display:flex;align-items:center;justify-content:space-between;gap:12px}
+.gate .msg{font-size:13px}
+.gate.locked .msg{color:var(--warn)}
+.gate.open .msg{color:var(--ok)}
+.gate button{flex:none;width:auto;min-width:160px}
+
+/* bottom nav */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:20;max-width:920px;margin:0 auto;
+  background:var(--surface);border-top:1px solid var(--line);display:flex}
+.nav button{flex:1;background:none;border:none;border-radius:0;padding:11px 4px;color:var(--ink-faint);font-size:12px;display:flex;flex-direction:column;align-items:center;gap:3px}
+.nav button.on{color:var(--accent)}
+.nav .ic{font-size:20px}
+
+/* stepper */
+.stepper{display:flex;align-items:center;gap:8px}
+.stepper button{width:40px;height:40px;font-size:20px;background:var(--surface-2);border:1px solid var(--line);padding:0}
+.stepper input{width:64px}
+
+/* accordion */
+.acc-head{display:flex;align-items:center;justify-content:space-between;padding:14px;cursor:pointer;background:var(--surface-2);border-radius:var(--r-sm)}
+.acc{border:1px solid var(--line);border-radius:var(--r-sm);margin-bottom:8px;overflow:hidden}
+.acc-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid var(--line)}
+.acc-item .lbl{flex:1;font-size:15px}
+
+/* photo button */
+.photo{display:inline-flex;align-items:center;gap:6px;padding:9px 13px;font-size:13px;border-radius:var(--r-sm);
+  border:1px solid var(--line);background:var(--surface-2);color:var(--ink-dim);cursor:pointer}
+.photo.has{border-color:var(--ok);background:var(--ok-bg);color:var(--ok)}
+
+/* modal (remindere/alarme) */
+.overlay{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:22px}
+.overlay.show{display:flex}
+.modal{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:26px;max-width:420px;width:100%;text-align:center}
+.modal .ring{width:64px;height:64px;border-radius:50%;background:var(--warn-bg);color:var(--warn);display:grid;place-items:center;font-size:30px;margin:0 auto 14px}
+.modal h3{font-size:23px;margin-bottom:6px}
+.row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-top:1px solid var(--line)}
+.row:first-child{border-top:none}
+.big{font-family:var(--font-display);font-size:20px}
+.result{display:flex;align-items:center;justify-content:space-between;padding:13px 14px;border-radius:var(--r-sm);margin-top:8px}
+.result.calc{background:#1c2730}
+.result.calc .v{color:var(--info)}
+.result.final{background:var(--ok-bg)}
+.result.final .v{color:var(--ok);font-size:22px}
+.result .v{font-family:var(--font-display);font-weight:600}
+.sec-label{font-size:13px;letter-spacing:.5px;color:var(--ink-dim);text-transform:uppercase;margin-bottom:8px}
+.hidden{display:none!important}
+.warnline{color:var(--bad);font-size:12px;margin-top:6px}
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--accent);color:var(--accent-ink);
+  padding:12px 20px;border-radius:999px;font-weight:600;z-index:80;opacity:0;transition:.3s;font-size:14px}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="brand"><div class="mark">SE</div><div class="name">SEND</div></div>
+    <div class="clock"><div class="t" id="clk-t">--:--</div><div class="d" id="clk-d"></div></div>
+  </div>
+
+  <!-- 1. SELECȚIE ECHIPĂ + ZONĂ -->
+  <section id="s-staff" class="screen">
+    <h2 class="title">Cine lucrează azi?</h2>
+    <p class="sub">Atinge numele, apoi alege zona.</p>
+    <div id="staff-list"></div>
+    <div class="card" style="border-style:dashed">
+      <label>Persoană nouă · doar pentru azi</label>
+      <div class="btn-row" style="margin-top:8px">
+        <input id="new-person" placeholder="Scrie numele..." style="flex:3">
+        <button class="btn-ghost" style="flex:1" onclick="addNewPerson()">Adaugă</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. CHECKLIST DIMINEAȚĂ -->
+  <section id="s-morning" class="screen">
+    <h2 class="title">Checklist de dimineață</h2>
+    <p class="sub">Tura pornește doar când totul e bifat.</p>
+    <div id="morning-list"></div>
+  </section>
+
+  <!-- 3. DASHBOARD -->
+  <section id="s-dash" class="screen">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <h3>Tura de azi</h3><span id="dash-rem" class="pill warn"></span>
+      </div>
+      <div id="dash-team" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+    </div>
+    <div class="card">
+      <h3>Sarcini azi</h3>
+      <p class="muted" style="margin:4px 0 0">Reminderele apar automat ca pop-up. Pagina zilei e mai jos.</p>
+    </div>
+    <button class="btn-ghost" style="width:100%;margin-bottom:14px" onclick="show('s-day')">Pagina zilei →</button>
+    <button class="btn-primary" onclick="startClosing()">Închide tura</button>
+  </section>
+
+  <!-- 4. PAGINA ZILEI -->
+  <section id="s-day" class="screen">
+    <h2 class="title" id="day-title">Pagina zilei</h2>
+    <p class="sub">Se face în timpul zilei · bifă + poză opțională.</p>
+    <div class="card"><div id="day-list"></div></div>
+    <button class="btn-ghost" style="width:100%" onclick="show('s-dash')">← Înapoi la dashboard</button>
+  </section>
+
+  <!-- 5. INVENTAR DE SEARĂ -->
+  <section id="s-inv" class="screen">
+    <h2 class="title">Inventar de seară</h2>
+    <p class="sub">Activ de la 22:00 · <span id="inv-prog">0/0</span> numărate</p>
+    <input id="inv-search" placeholder="Caută produs..." style="margin-bottom:12px" oninput="renderInventory()">
+    <div id="inv-list"></div>
+  </section>
+
+  <!-- 6. CONSUM & PIERDERI -->
+  <section id="s-loss" class="screen">
+    <h2 class="title">Consum &amp; pierderi</h2>
+    <p class="sub">Completează înainte de închidere.</p>
+    <div class="card"><h3>Ce a consumat personalul</h3><div id="loss-consum"></div>
+      <button class="btn-ghost" style="margin-top:6px" onclick="addLoss('consum')">+ Adaugă</button></div>
+    <div class="card"><h3>Ce pahare s-au spart</h3>
+      <div id="glass-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0"></div>
+      <div id="loss-pahare"></div>
+      <button class="btn-ghost" style="margin-top:6px" onclick="addLoss('pahare')">+ Adaugă</button></div>
+    <div class="card"><h3>Ce alte pierderi avem</h3><div id="loss-alte"></div>
+      <button class="btn-ghost" style="margin-top:6px" onclick="addLoss('alte')">+ Adaugă</button></div>
+  </section>
+
+  <!-- 7. RECONCILIERE CASĂ -->
+  <section id="s-cash" class="screen">
+    <h2 class="title">Închidere · casa</h2>
+    <p class="sub">Tu scrii sumele, aplicația calculează.</p>
+    <div class="card">
+      <div class="sec-label">Raport Z</div>
+      <div class="row"><label>Cash</label><input type="number" id="z_cash" oninput="calcCash()" style="width:130px" placeholder="0"></div>
+      <div class="row"><label>Card</label><input type="number" id="z_card" oninput="calcCash()" style="width:130px" placeholder="0"></div>
+      <div class="row"><label>Ia loc.</label><input type="number" id="z_ialoc" oninput="calcCash()" style="width:130px" placeholder="0"></div>
+      <div class="result calc"><span>Total Raport Z</span><span class="v" id="z_total">0,00 RON</span></div>
+    </div>
+    <div class="card">
+      <div class="sec-label">Reconciliere casă</div>
+      <div class="row"><label>Sold ziua precedentă</label><input type="number" id="sold_prev" oninput="calcCash()" style="width:130px" placeholder="0"></div>
+      <div class="result calc"><span>Valoare cash <span class="muted">(sold prec. + Z cash)</span></span><span class="v" id="val_cash">0,00 RON</span></div>
+      <div class="row"><label>Plăți cash (ieșiri)</label><input type="number" id="plati_cash" oninput="calcCash()" style="width:130px" placeholder="0"></div>
+      <div class="result final"><span>Sold final <span class="muted">(valoare − plăți)</span></span><span class="v" id="sold_final">0,00 RON</span></div>
+    </div>
+  </section>
+
+  <!-- 8. CHECKLIST FINAL -->
+  <section id="s-final" class="screen">
+    <h2 class="title">Checklist final</h2>
+    <p class="sub">Cine verifică trebuie să fie altă persoană decât cine a făcut.</p>
+    <div id="final-list"></div>
+  </section>
+
+</div>
+
+<!-- GATE BAR (shared) -->
+<div class="gate locked" id="gate" style="display:none">
+  <span class="msg" id="gate-msg"></span>
+  <button class="btn-primary" id="gate-btn" disabled onclick="gateAction()">Continuă</button>
+</div>
+
+<!-- BOTTOM NAV (dashboard area) -->
+<div class="nav" id="nav" style="display:none">
+  <button data-go="s-dash" onclick="show('s-dash')"><span class="ic">⌂</span>Dashboard</button>
+  <button data-go="s-day" onclick="show('s-day')"><span class="ic">☑</span>Ziua</button>
+  <button onclick="startClosing()"><span class="ic">⏻</span>Închide</button>
+</div>
+
+<!-- REMINDER MODAL -->
+<div class="overlay" id="rem-overlay">
+  <div class="modal">
+    <div class="ring" id="rem-ic">🔔</div>
+    <div class="muted" id="rem-time">REMINDER</div>
+    <h3 id="rem-title"></h3>
+    <span class="pill" id="rem-zone"></span>
+    <div id="rem-actions" style="margin-top:22px"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   SEND — configurare. Completează după deploy-ul Apps Script.
+   ============================================================ */
+const CONFIG = {
+  BACKEND_URL: "",                 // URL-ul web app Apps Script (gol = doar local)
+  PRODUCTS_SHEET_ID: "1kz0Yy-vcJ6MYTqJgt9D3zMHNg84AQppFVTk6do-5Hj8",
+  MANAGER_PIN: "1234",
+  EMAIL_TO: "",                    // destinatarul raportului (se setează în backend ideal)
+  PROC1_RO: "https://docs.google.com/document/d/1rloElnoUBvWX1DszxxtmNJ4lHnaHG9urOu2RZp0OZjw/edit",
+  PROC1_EN: "https://docs.google.com/document/d/1uwxfEEfdOssVaehEmvM9NwA9Q0rKUIhUBUBaZwvLyc0/edit"
+};
+
+/* ---------- date statice ---------- */
+const TEAM = ["Cipri","Samir","Bishma","Asmita","Ranjana","Sushma","Sujata"];
+const ZONES = [["bar","Bar"],["sala","Sală"],["bucatarie","Bucătărie"]];
+
+const MORNING = {
+  barsala: { titlu:"BAR / TERASĂ / SALĂ", zones:["bar","sala"], items:["A fost făcută verificarea conform procedurii nr. 1?"], text:"Lipsește ceva?" },
+  bucatarie: { titlu:"BUCĂTĂRIE", zones:["bucatarie"], items:["Aprins cuptorul","Verificare temperatură frigidere","Verificare / completare etichete produse desfăcute","Pregătire salam / mozzarella","Curat înainte de a începe ziua"] }
+};
+
+const DAY_TASKS = {
+  1:["Pompițe sirop","Frigidere","Măturat + spălat cafenea","Sub canapele","Baie"],
+  2:["Rafturi alcool","Pahare alcool","Geamuri","Stoc arome + piure","Apă plante"],
+  3:["Curat în vestiar + magazie"],
+  4:["Oglinzi cafenea","Curățenie generală baie","Praf cafenea"],
+  5:["Băi"],
+  6:["Băi","Apă plante","Curățenie generală bucătărie"],
+  0:["Băi"]
+};
+const DAY_NAMES=["Duminică","Luni","Marți","Miercuri","Joi","Vineri","Sâmbătă"];
+
+const REMINDERS = [
+  {id:"toalete", t:"Verifică toaletele", type:"done", zone:"Sală", interval:120, from:10, to:22, sound:true},
+  {id:"frig", t:"Verifică frigiderele", type:"done", zone:"Bar + Bucătărie", times:["11:00","17:00"], sound:false},
+  {id:"cross", t:"Cross-check bar", type:"done", zone:"Bar", times:["09:45"], sound:false},
+  {id:"stocp", t:"Verificare stoc prânz (suc lămâie, felii lămâie+mentă, cafea ice coffee, lime, matcha, ceai Galaxy)", type:"done", zone:"Bar", times:["15:00"], sound:true},
+  {id:"kara", t:"Pregătire karaoke", type:"done", zone:"Toți", times:["11:00"], days:[5], sound:true},
+  {id:"mic", t:"Pune microfoanele la încărcat", type:"done", zone:"Bar", times:["10:00"], days:[5], sound:true},
+  {id:"seara", t:"Începe curățenia de seară", type:"done", zone:"Toți", times:["23:00"], sound:true},
+  {id:"prez", t:"Avem personal unde sunt clienții?", type:"yesno", bad:"Nu", zone:"Toți", interval:60, from:8, to:24, sound:true},
+  {id:"tel", t:"A stat cineva pe telefon cât au fost mese ocupate?", type:"yesno", bad:"Da", zone:"Toți", interval:60, from:8, to:24, sound:true},
+  {id:"cur", t:"Verificare curățenie (bar, bucătărie, terasă, interior, baie)", type:"photo", zone:"Toți", times:["12:00","17:00","22:30"], sound:true}
+];
+
+const PRODUCTS_FALLBACK = {
+  "Fructe + Verdeață":["Lămâi","Lime","Portocale","Mentă","Banane"],
+  "Consumabile Bar":["Paie","Zahăr","Paletine","Pahare 150ml + capace","Pahare 300ml + capace","Pahare 400ml + capace","Pahare Limonadă + capace"],
+  "Consumabile Băi + Cleaning":["Saci 60L","Saci 30L","Mănuși M/S","Săpun mâini","Săpun de vase","Hârtie mâini baie/bar","Soluție mop","Soluție spray","Clor","Dezinfectant","Microfibre + lavete","Cap de mop","Bureți vase","Parfumate WC"],
+  "Bucătărie":["Caputo roșu","Caputo albastru","Semola","Sos roșii","Busuioc mic","Busuioc mare","Salam dolce","Salam picant","Drojdie","Ulei","Sos picant","Mozzarella","Sare","Paline"],
+  "Bere":["Corona","Ursus","Ursus 0%","Ursus nefiltrată","Peroni","Ursus Cooler","Peroni KEG (tap)"],
+  "Sucuri Limonade":["Portocale","Piersici","Ananas","Măr","Cranberry","Sprite","Schweppes","Aloe Vera","Sclipici","Ceai fasolea fluturilor","Matcha"],
+  "Sucuri (mixere)":["Cola 0,5L","Apă tonică 0,5L","Apă tonică roz 0,5L","Apă minerală 0,5L"],
+  "Spirtoase":["Finlandia (Vodka)","Jameson (Whiskey)","Wild Turkey (Whiskey)","Jose Cuervo (Tequila)","Martell VS (Cognac)","Aperol"],
+  "Ginuri":["Beefeater Dry","Tanqueray Classic","Tanqueray 0%","Beefeater Pink","Bombay"],
+  "Sucuri Gama Cola":["Cola","Cola 0%","Fanta","Sprite","Schweppes","Schweppes Pink","Dorna plată","Dorna minerală"],
+  "Lichior":["Disaronno","Kahlua","Triple Sec Curacao","Jägermeister"],
+  "Prosecco & Vinuri":["LaSalute","Caloian Alb","Caloian Rose","Caloian Roșu","Purcari Nocturne Alb","Purcari Nocturne Rose","Purcari Nocturne Roșu","Rose demidulce"],
+  "Siropuri / Piureuri":["Caramel","Caramel sărat","Ciocolată","Vanilie","Hazelnut","Tiramisu","Coconut","Mint","Soc","Grenadine","Le Blue","piure Passion","piure Wildberry","piure Raspberry","piure Strawberry"],
+  "Consumabile Cafea":["Cafea","Cafea Deco","Lapte","Lapte vegan","Frișcă","Ciocolată","Ceaiuri","Zahăr KG","Piscoturi","Patroane frișcă","Plicuri scorțișoară/chili/cacao","Miere","Zahăr plic"]
+};
+const GLASS_TYPES=["Pahar 150ml","Pahar 300ml","Pahar 400ml","Pahar limonadă","Pahar sticlă"];
+const FINAL_ITEMS=["Este curat în baie?","Este bucătăria curată?","Este curat în bar și în cafenea?","Mesele de pe terasă aranjate? Umbrele strânse?","Z + sold final verificate; telefoane, POS, tabletă la încărcat?"];
+
+/* ============================================================
+   STARE (localStorage, pe zi)
+   ============================================================ */
+function todayKey(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+let S = load();
+function load(){
+  try{const raw=localStorage.getItem("send_"+todayKey());if(raw)return JSON.parse(raw);}catch(e){}
+  return { date:todayKey(), team:[], morning:{}, day:{}, inv:{}, loss:{consum:[{p:"",c:""}],pahare:[{t:"",n:""}],alte:[{d:"",c:""}]},
+           cash:{}, final:{}, remLog:[], started:false, closed:false, phase:"" };
+}
+function save(){try{localStorage.setItem("send_"+todayKey(),JSON.stringify(S));}catch(e){}
+  if(CONFIG.BACKEND_URL) backend("autosave",{state:S}); }
+
+let PRODUCTS = PRODUCTS_FALLBACK;
+
+/* ============================================================
+   UTIL
+   ============================================================ */
+function $(id){return document.getElementById(id);}
+function show(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  $(id).classList.add("active");
+  const dashArea=["s-dash","s-day"].includes(id);
+  $("nav").style.display=(S.started&&!S.closed&&dashArea)?"flex":"none";
+  document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.go===id));
+  gateFor(id);
+  window.scrollTo(0,0);
+}
+function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1800);}
+function num(v){const n=parseFloat(v);return isNaN(n)?0:n;}
+function fmt(n){return n.toLocaleString("ro-RO",{minimumFractionDigits:2,maximumFractionDigits:2})+" RON";}
+function beep(){try{const a=new(window.AudioContext||window.webkitAudioContext)();const o=a.createOscillator();const g=a.createGain();o.connect(g);g.connect(a.destination);o.frequency.value=880;g.gain.value=.2;o.start();setTimeout(()=>{o.stop();a.close();},500);}catch(e){}}
+
+/* clock */
+function tick(){const d=new Date();$("clk-t").textContent=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+  $("clk-d").textContent=d.toLocaleDateString("ro-RO",{weekday:"long",day:"numeric",month:"long"});}
+setInterval(tick,1000);tick();
+
+/* ============================================================
+   BACKEND (Apps Script). Trimite JSON; toleranta la lipsa lui.
+   ============================================================ */
+async function backend(action,payload){
+  if(!CONFIG.BACKEND_URL) return null;
+  try{
+    const r=await fetch(CONFIG.BACKEND_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify({action,date:todayKey(),...payload})});
+    return await r.json();
+  }catch(e){console.warn("backend",action,e);return null;}
+}
+async function loadProducts(){
+  const res=await backend("getProducts",{sheetId:CONFIG.PRODUCTS_SHEET_ID});
+  if(res&&res.products)PRODUCTS=res.products;
+}
+
+/* ============================================================
+   1. SELECȚIE ECHIPĂ + ZONĂ
+   ============================================================ */
+let staffState={}; // name -> {on, zone}
+function renderStaff(){
+  const all=[...TEAM, ...Object.keys(staffState).filter(n=>!TEAM.includes(n))];
+  const c=$("staff-list");c.innerHTML="";
+  all.forEach(name=>{
+    if(!staffState[name])staffState[name]={on:false,zone:null};
+    const st=staffState[name];
+    const card=document.createElement("div");card.className="card";card.style.padding="0";card.style.overflow="hidden";
+    const chip=document.createElement("div");chip.className="chip"+(st.on?" on":"");
+    chip.innerHTML='<div class="dot"></div><div class="lbl">'+name+'</div>';
+    chip.onclick=()=>{st.on=!st.on;if(!st.on)st.zone=null;renderStaff();};
+    card.appendChild(chip);
+    if(st.on){
+      const z=document.createElement("div");z.className="zones";z.style.padding="0 14px 14px";
+      ZONES.forEach(([k,lbl])=>{const b=document.createElement("button");b.textContent=lbl;
+        if(st.zone===k)b.className="on";b.onclick=e=>{e.stopPropagation();st.zone=k;renderStaff();};z.appendChild(b);});
+      card.appendChild(z);
+    }
+    c.appendChild(card);
+  });
+  gateFor("s-staff");
+}
+function addNewPerson(){const v=$("new-person").value.trim();if(!v)return;staffState[v]={on:true,zone:null};$("new-person").value="";renderStaff();}
+
+/* ============================================================
+   2. CHECKLIST DIMINEAȚĂ
+   ============================================================ */
+function activeZones(){return S.team.map(t=>t.zone);}
+function renderMorning(){
+  const c=$("morning-list");c.innerHTML="";
+  Object.entries(MORNING).forEach(([key,sec])=>{
+    if(!sec.zones.some(z=>activeZones().includes(z)))return; // zona fara personal -> nu apare
+    const card=document.createElement("div");card.className="card";
+    card.innerHTML='<h3>'+sec.titlu+'</h3>';
+    sec.items.forEach((it,i)=>{
+      const k=key+"_"+i, done=!!S.morning[k];
+      const row=document.createElement("div");row.className="chk"+(done?" done":"");
+      row.innerHTML='<div class="box">'+(done?"✓":"")+'</div><div class="lbl">'+it+'</div>';
+      row.onclick=()=>{S.morning[k]=!S.morning[k];save();renderMorning();};
+      card.appendChild(row);
+      if(key==="barsala"&&i===0){
+        const links=document.createElement("div");links.style.padding="0 0 6px 38px";
+        links.innerHTML='<a class="pill info" href="'+CONFIG.PROC1_RO+'" target="_blank" style="text-decoration:none">📄 Procedura 1 · RO</a> '+
+                        '<a class="pill" href="'+CONFIG.PROC1_EN+'" target="_blank" style="text-decoration:none">EN</a>';
+        card.appendChild(links);
+      }
+    });
+    if(sec.text!==undefined){
+      const wrap=document.createElement("div");wrap.style.marginTop="8px";
+      wrap.innerHTML='<label>'+sec.text+' (opțional)</label>';
+      const ta=document.createElement("textarea");ta.value=S.morning[key+"_text"]||"";ta.placeholder="Scrie aici...";
+      ta.oninput=()=>{S.morning[key+"_text"]=ta.value;save();};
+      wrap.appendChild(ta);card.appendChild(wrap);
+    }
+    c.appendChild(card);
+  });
+  gateFor("s-morning");
+}
+function morningRequired(){
+  let req=[];
+  Object.entries(MORNING).forEach(([key,sec])=>{
+    if(!sec.zones.some(z=>activeZones().includes(z)))return;
+    sec.items.forEach((_,i)=>req.push(key+"_"+i));
+  });
+  return req;
+}
+function morningDone(){return morningRequired().every(k=>S.morning[k]);}
+
+/* ============================================================
+   3. DASHBOARD
+   ============================================================ */
+function renderDash(){
+  const t=$("dash-team");t.innerHTML="";
+  S.team.forEach(p=>{const zl=(ZONES.find(z=>z[0]===p.zone)||["","?"])[1];
+    const s=document.createElement("span");s.className="pill";s.textContent=p.name+" · "+zl;t.appendChild(s);});
+  const pending=REMINDERS.length;
+  $("dash-rem").textContent="🔔 remindere active";
+}
+
+/* ============================================================
+   4. PAGINA ZILEI
+   ============================================================ */
+function renderDay(){
+  const dow=new Date().getDay();
+  $("day-title").textContent="Pagina zilei · "+DAY_NAMES[dow];
+  const tasks=DAY_TASKS[dow]||[];
+  const c=$("day-list");c.innerHTML="";
+  if(!S.day[dow])S.day[dow]=tasks.map(()=>({done:false,photo:false}));
+  tasks.forEach((t,i)=>{
+    const st=S.day[dow][i];
+    const row=document.createElement("div");row.style.cssText="display:flex;align-items:center;gap:12px;padding:13px 0;border-top:"+(i?"1px solid var(--line)":"none");
+    const chk=document.createElement("div");chk.style.cssText="display:flex;align-items:center;gap:12px;flex:1;cursor:pointer";
+    chk.innerHTML='<div class="box" style="'+(st.done?"background:var(--ok);border-color:var(--ok);color:var(--bg)":"")+'">'+(st.done?"✓":"")+'</div><div class="lbl" style="'+(st.done?"color:var(--ink-dim);text-decoration:line-through":"")+'">'+t+'</div>';
+    chk.onclick=()=>{st.done=!st.done;save();renderDay();};
+    const ph=makePhotoBtn(st.photo,()=>{st.photo=true;save();renderDay();},"Pagina zilei",t);
+    row.appendChild(chk);row.appendChild(ph);c.appendChild(row);
+  });
+}
+function makePhotoBtn(has,onpick,fereastra,categorie){
+  const lbl=document.createElement("label");lbl.className="photo"+(has?" has":"");
+  lbl.innerHTML=(has?"✓ Poză":"📷 Poză");
+  const inp=document.createElement("input");inp.type="file";inp.accept="image/*";inp.capture="environment";inp.style.display="none";
+  inp.onchange=()=>{const f=inp.files[0];if(!f)return;
+    const rd=new FileReader();rd.onload=()=>{uploadPhoto(rd.result,fereastra,categorie);onpick();};rd.readAsDataURL(f);};
+  lbl.appendChild(inp);return lbl;
+}
+function uploadPhoto(dataUrl,fereastra,categorie){
+  backend("uploadPhoto",{photo:dataUrl,fereastra,categorie});
+}
+
+/* ============================================================
+   5. INVENTAR DE SEARĂ
+   ============================================================ */
+let invExpanded={};
+function renderInventory(){
+  const term=($("inv-search").value||"").trim().toLowerCase();
+  const c=$("inv-list");c.innerHTML="";let total=0,counted=0;
+  Object.entries(PRODUCTS).forEach(([cat,items],ci)=>{
+    const matches=items.map((it,ii)=>({it,ii})).filter(o=>!term||o.it.toLowerCase().includes(term));
+    items.forEach((_,ii)=>{total++;const k=ci+"_"+ii;if(S.inv[k]!==undefined&&S.inv[k]!=="")counted++;});
+    if(term&&!matches.length)return;
+    const open=term?true:!!invExpanded[ci]||ci===0&&!Object.keys(invExpanded).length;
+    const acc=document.createElement("div");acc.className="acc";
+    let cc=0;items.forEach((_,ii)=>{const k=ci+"_"+ii;if(S.inv[k]!==undefined&&S.inv[k]!=="")cc++;});
+    const head=document.createElement("div");head.className="acc-head";
+    head.innerHTML='<span style="font-weight:500">'+cat+'</span><span class="muted">'+cc+"/"+items.length+(open?" ▲":" ▼")+'</span>';
+    if(!term)head.onclick=()=>{invExpanded[ci]=!open;renderInventory();};
+    acc.appendChild(head);
+    if(open){matches.forEach(o=>{const k=ci+"_"+o.ii;
+      const row=document.createElement("div");row.className="acc-item";
+      const lbl=document.createElement("div");lbl.className="lbl";lbl.textContent=o.it;
+      const step=document.createElement("div");step.className="stepper";
+      const minus=document.createElement("button");minus.textContent="−";
+      const plus=document.createElement("button");plus.textContent="+";
+      const inp=document.createElement("input");inp.type="number";inp.value=S.inv[k]??"";inp.placeholder="–";
+      inp.oninput=()=>{S.inv[k]=inp.value;save();updateInvProg();};
+      minus.onclick=()=>{let v=num(S.inv[k]);v=Math.max(0,v-1);S.inv[k]=String(v);save();renderInventory();};
+      plus.onclick=()=>{let v=num(S.inv[k]);S.inv[k]=String(v+1);save();renderInventory();};
+      step.append(minus,inp,plus);row.append(lbl,step);acc.appendChild(row);});}
+    c.appendChild(acc);
+  });
+  $("inv-prog").textContent=counted+"/"+total;
+  gateFor("s-inv");
+}
+function updateInvProg(){let total=0,counted=0;Object.entries(PRODUCTS).forEach(([cat,items],ci)=>{items.forEach((_,ii)=>{total++;const k=ci+"_"+ii;if(S.inv[k]!==undefined&&S.inv[k]!=="")counted++;});});$("inv-prog").textContent=counted+"/"+total;gateFor("s-inv");}
+function invDone(){let total=0,counted=0;Object.entries(PRODUCTS).forEach(([c,items],ci)=>{items.forEach((_,ii)=>{total++;const k=ci+"_"+ii;if(S.inv[k]!==undefined&&S.inv[k]!=="")counted++;});});return total>0&&counted===total;}
+
+/* ============================================================
+   6. CONSUM & PIERDERI
+   ============================================================ */
+function renderLoss(){
+  // consum
+  let c=$("loss-consum");c.innerHTML="";
+  S.loss.consum.forEach((r,i)=>{const row=lossRow(["Produs","Cant."],[r.p,r.c],(v0,v1)=>{r.p=v0;r.c=v1;save();},()=>{S.loss.consum.splice(i,1);if(!S.loss.consum.length)S.loss.consum.push({p:"",c:""});renderLoss();});c.appendChild(row);});
+  // pahare chips
+  const ch=$("glass-chips");ch.innerHTML="";
+  GLASS_TYPES.forEach(g=>{const b=document.createElement("button");b.className="btn-ghost";b.style.cssText="padding:6px 10px;font-size:12px";b.textContent="+ "+g;
+    b.onclick=()=>{const last=S.loss.pahare[S.loss.pahare.length-1];if(last&&!last.t&&!last.n)last.t=g;else S.loss.pahare.push({t:g,n:""});renderLoss();};ch.appendChild(b);});
+  c=$("loss-pahare");c.innerHTML="";
+  S.loss.pahare.forEach((r,i)=>{const row=lossRow(["Tip pahar","Câte"],[r.t,r.n],(v0,v1)=>{r.t=v0;r.n=v1;save();},()=>{S.loss.pahare.splice(i,1);if(!S.loss.pahare.length)S.loss.pahare.push({t:"",n:""});renderLoss();});c.appendChild(row);});
+  c=$("loss-alte");c.innerHTML="";
+  S.loss.alte.forEach((r,i)=>{const row=lossRow(["Descriere pierdere","Cant."],[r.d,r.c],(v0,v1)=>{r.d=v0;r.c=v1;save();},()=>{S.loss.alte.splice(i,1);if(!S.loss.alte.length)S.loss.alte.push({d:"",c:""});renderLoss();});c.appendChild(row);});
+}
+function lossRow(ph,vals,onin,ondel){
+  const row=document.createElement("div");row.style.cssText="display:flex;gap:8px;margin-bottom:8px;align-items:center";
+  const a=document.createElement("input");a.placeholder=ph[0];a.value=vals[0]||"";a.style.flex="1";
+  const b=document.createElement("input");b.type="number";b.placeholder=ph[1];b.value=vals[1]||"";b.style.width="72px";b.style.flex="none";
+  a.oninput=()=>onin(a.value,b.value);b.oninput=()=>onin(a.value,b.value);
+  const d=document.createElement("button");d.className="btn-ghost";d.textContent="✕";d.style.cssText="width:42px;flex:none";d.onclick=ondel;
+  row.append(a,b,d);return row;
+}
+function addLoss(kind){if(kind==="consum")S.loss.consum.push({p:"",c:""});if(kind==="pahare")S.loss.pahare.push({t:"",n:""});if(kind==="alte")S.loss.alte.push({d:"",c:""});renderLoss();}
+function lossDone(){return true;} // completarea e liberă; poarta cere doar trecerea prin ecran
+
+/* ============================================================
+   7. RECONCILIERE CASĂ
+   ============================================================ */
+function calcCash(){
+  const cash=num($("z_cash").value),card=num($("z_card").value),ialoc=num($("z_ialoc").value);
+  const ztot=cash+card+ialoc;$("z_total").textContent=fmt(ztot);
+  const sp=num($("sold_prev").value);const valc=sp+cash;$("val_cash").textContent=fmt(valc);
+  const pc=num($("plati_cash").value);const sf=valc-pc;$("sold_final").textContent=fmt(sf);
+  S.cash={cash,card,ialoc,ztot,soldPrev:sp,valCash:valc,platiCash:pc,soldFinal:sf};save();
+  gateFor("s-cash");
+}
+function cashDone(){const k=S.cash;return k&&($("z_cash").value!==""||$("z_card").value!==""||$("z_ialoc").value!=="")&&$("sold_prev").value!=="";}
+
+/* ============================================================
+   8. CHECKLIST FINAL (verificare în doi)
+   ============================================================ */
+function renderFinal(){
+  const c=$("final-list");c.innerHTML="";const teamNames=S.team.map(t=>t.name);
+  FINAL_ITEMS.forEach((q,i)=>{
+    if(!S.final[i])S.final[i]={facut:"",verif:"",photo:false};
+    const st=S.final[i];
+    const card=document.createElement("div");card.className="card";
+    card.innerHTML='<p style="font-weight:500;margin:0 0 10px">'+q+'</p>';
+    const selRow=document.createElement("div");selRow.style.cssText="display:flex;gap:8px;margin-bottom:10px";
+    selRow.append(sel(teamNames,st.facut,"Făcut de…",v=>{st.facut=v;save();renderFinal();}),
+                  sel(teamNames,st.verif,"Verificat de…",v=>{st.verif=v;save();renderFinal();}));
+    card.appendChild(selRow);
+    const bottom=document.createElement("div");bottom.style.cssText="display:flex;align-items:center;gap:10px;flex-wrap:wrap";
+    bottom.appendChild(makePhotoBtn(st.photo,()=>{st.photo=true;save();renderFinal();},"Checklist final",q.slice(0,20)));
+    if(st.facut&&st.verif&&st.facut===st.verif){const w=document.createElement("span");w.className="warnline";w.textContent="⚠ Verificatorul trebuie să fie altă persoană.";bottom.appendChild(w);}
+    else if(finalItemOk(i)){const o=document.createElement("span");o.className="pill ok";o.textContent="✓ Gata";bottom.appendChild(o);}
+    card.appendChild(bottom);c.appendChild(card);
+  });
+  gateFor("s-final");
+}
+function sel(opts,val,ph,on){const s=document.createElement("select");s.style.flex="1";
+  s.innerHTML='<option value="">'+ph+'</option>'+opts.map(o=>'<option'+(o===val?" selected":"")+'>'+o+'</option>').join("");
+  s.onchange=()=>on(s.value);return s;}
+function finalItemOk(i){const st=S.final[i];return st&&st.facut&&st.verif&&st.photo&&st.facut!==st.verif;}
+function finalDone(){return FINAL_ITEMS.every((_,i)=>finalItemOk(i));}
+
+/* ============================================================
+   POARTA — comportament pe fiecare ecran
+   ============================================================ */
+function gateFor(id){
+  const gate=$("gate"),btn=$("gate-btn"),msg=$("gate-msg");
+  const map={
+    "s-staff":{ok:()=>S? Object.values(staffState).some(s=>s.on&&s.zone):false, lock:"Selectează cine lucrează și zona.", open:"Gata — pornește.", label:"Continuă"},
+    "s-morning":{ok:morningDone, lock:"Bifează tot pentru a porni tura.", open:"Totul bifat — poți începe.", label:"Începe tura"},
+    "s-inv":{ok:invDone, lock:"Numără tot inventarul.", open:"Inventar complet.", label:"Continuă"},
+    "s-loss":{ok:lossDone, lock:"", open:"Completat.", label:"Continuă"},
+    "s-cash":{ok:cashDone, lock:"Completează raportul Z și soldul precedent.", open:"Casă reconciliată.", label:"Continuă"},
+    "s-final":{ok:finalDone, lock:"Completează tot, verificat în doi.", open:"Verificat în doi — închide tura.", label:"Trimite & închide"}
+  };
+  if(!map[id]){gate.style.display="none";return;}
+  gate.style.display="flex";
+  const g=map[id];const ok=g.ok();
+  btn.disabled=!ok;btn.textContent=g.label;
+  gate.classList.toggle("locked",!ok);gate.classList.toggle("open",ok);
+  msg.textContent=ok?g.open:g.lock;
+  gate.dataset.screen=id;
+}
+function gateAction(){
+  const id=$("gate").dataset.screen;
+  if(id==="s-staff"){
+    S.team=Object.entries(staffState).filter(([n,s])=>s.on&&s.zone).map(([n,s])=>({name:n,zone:s.zone}));
+    save();backend("saveShift",{team:S.team});
+    renderMorning();show("s-morning");
+  }
+  else if(id==="s-morning"){
+    S.started=true;save();backend("saveMorning",{morning:S.morning});
+    renderDash();renderDay();show("s-dash");startReminders();
+  }
+  else if(id==="s-inv"){ backend("saveInventory",{inv:S.inv}); renderLoss();show("s-loss"); }
+  else if(id==="s-loss"){ backend("saveLosses",{loss:S.loss}); show("s-cash");calcCash(); }
+  else if(id==="s-cash"){ backend("saveCash",{cash:S.cash}); renderFinal();show("s-final"); }
+  else if(id==="s-final"){ closeShift(); }
+}
+
+/* ============================================================
+   ÎNCHIDERE TURĂ
+   ============================================================ */
+function startClosing(){
+  const h=new Date().getHours();
+  if(h<22){toast("Închiderea e disponibilă de la 22:00");return;}
+  renderInventory();show("s-inv");
+}
+async function closeShift(){
+  S.closed=true;S.phase="closed";save();
+  await backend("saveFinal",{final:S.final});
+  await backend("sendEmail",{state:S});
+  toast("Tura închisă · raport trimis");
+  $("gate").style.display="none";$("nav").style.display="none";
+  setTimeout(()=>{$("s-final").innerHTML='<div style="text-align:center;padding:60px 20px"><div style="font-size:54px">✓</div><h2 class="title" style="margin-top:14px">Tură închisă</h2><p class="sub">Raportul a fost trimis. Mulțumesc.</p></div>';},400);
+}
+
+/* ============================================================
+   REMINDERE (în aplicație, cât tableta e pe app)
+   ============================================================ */
+let remTimer=null, remFired={}, remQueue=[], remActive=false;
+function startReminders(){ if(remTimer)return; remTimer=setInterval(remCheck,30000); remCheck(); }
+function hm(d){return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");}
+function remCheck(){
+  const d=new Date(),now=hm(d),dow=d.getDay(),h=d.getHours(),m=d.getMinutes();
+  REMINDERS.forEach(r=>{
+    if(r.days&&!r.days.includes(dow))return;
+    let fire=false;
+    if(r.times&&r.times.includes(now))fire=true;
+    if(r.interval&&h>=r.from&&h<r.to&&(h*60+m)%r.interval===0)fire=true;
+    const key=r.id+"_"+now;
+    if(fire&&!remFired[key]){remFired[key]=true;remQueue.push(r);}
+  });
+  closingWindowCheck(d);
+  if(!remActive&&remQueue.length)showReminder(remQueue.shift());
+}
+let emailSent=false;
+function closingWindowCheck(d){
+  if(S.closed)return;
+  const now=hm(d);
+  // reminder „închide tura" din 2 în 2 min între 23:50 și 23:56
+  if(["23:50","23:52","23:54","23:56"].includes(now)){
+    const key="close_"+now;
+    if(!remFired[key]){remFired[key]=true;
+      remQueue.push({id:"close",t:"Închide tura — raportul pleacă la 23:58!",type:"done",zone:"Toți",sound:true});}
+  }
+  // trimitere automată la 23:58, chiar dacă nu s-a apăsat
+  if(now==="23:58"&&!emailSent){emailSent=true;S._emailSent=true;save();
+    backend("sendEmail",{state:S});toast("Raport trimis automat (23:58)");}
+}
+function showReminder(r){
+  remActive=true;
+  $("rem-ic").textContent=r.type==="yesno"?"❓":r.type==="photo"?"📷":"🔔";
+  $("rem-time").textContent="REMINDER · "+hm(new Date());
+  $("rem-title").textContent=r.t;
+  $("rem-zone").textContent=r.zone;
+  const act=$("rem-actions");act.innerHTML="";
+  function done(resp){ S.remLog.push({id:r.id,t:r.t,resp,time:hm(new Date())}); save();
+    backend("saveReminder",{id:r.id,resp,time:hm(new Date())});
+    $("rem-overlay").classList.remove("show");remActive=false;
+    if(remQueue.length)setTimeout(()=>showReminder(remQueue.shift()),400); }
+  if(r.type==="yesno"){
+    const row=document.createElement("div");row.className="btn-row";
+    const da=document.createElement("button");da.textContent="Da";da.style.cssText="background:var(--bad-bg);color:var(--bad)";
+    const nu=document.createElement("button");nu.textContent="Nu";nu.style.cssText="background:var(--ok-bg);color:var(--ok)";
+    da.onclick=()=>done("Da");nu.onclick=()=>done("Nu");row.append(da,nu);act.appendChild(row);
+  } else if(r.type==="photo"){
+    const p="<p class='muted' style='margin:0 0 12px'>La „Da”, fă poză pentru: bar, bucătărie, terasă, interior, baie.</p>";
+    act.innerHTML=p;
+    const b=document.createElement("button");b.className="btn-primary";b.textContent="Deschide verificarea";
+    b.onclick=()=>{done("ok");toast("Fă pozele în secțiunea de curățenie");};
+    act.appendChild(b);
+  } else {
+    const row=document.createElement("div");row.className="btn-row";
+    const sn=document.createElement("button");sn.className="btn-ghost";sn.textContent="Amână 10 min";
+    const ok=document.createElement("button");ok.className="btn-primary";ok.textContent="Am făcut";ok.style.width="auto";
+    sn.onclick=()=>{$("rem-overlay").classList.remove("show");remActive=false;setTimeout(()=>{remQueue.push(r);},600000);};
+    ok.onclick=()=>done("făcut");row.append(sn,ok);act.appendChild(row);
+  }
+  $("rem-overlay").classList.add("show");
+  if(r.sound)beep();
+}
+
+/* ============================================================
+   PORNIRE
+   ============================================================ */
+async function boot(){
+  // reconstruiește staffState din S.team dacă tura e deja începută
+  S.team.forEach(p=>staffState[p.name]={on:true,zone:p.zone});
+  await loadProducts();
+  if(S.closed){show("s-dash");$("s-dash").innerHTML='<div style="text-align:center;padding:60px 20px"><div style="font-size:54px">✓</div><h2 class="title">Tură închisă azi</h2><p class="sub">Raportul a fost trimis.</p></div>';return;}
+  if(!S.started){
+    if(S.team.length){renderMorning();show(morningDone()?"s-dash":"s-morning");}
+    else{renderStaff();show("s-staff");}
+  } else {
+    renderDash();renderDay();show("s-dash");startReminders();
+  }
+}
+if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js").catch(()=>{});}
+boot();
+</script>
+</body>
+</html>

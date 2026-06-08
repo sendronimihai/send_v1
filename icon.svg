@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="110" fill="#16140f"/>
+  <rect x="96" y="96" width="320" height="320" rx="78" fill="#e0a458"/>
+  <text x="256" y="256" font-family="Georgia, 'Times New Roman', serif" font-size="170" font-weight="600"
+        fill="#16140f" text-anchor="middle" dominant-baseline="central" letter-spacing="2">SE</text>
+</svg>

@@ -1,0 +1,13 @@
+{
+  "name": "SEND — Operațional",
+  "short_name": "SEND",
+  "description": "Aplicația operațională SEND: de la deschidere la închidere.",
+  "start_url": "index.html",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#16140f",
+  "theme_color": "#16140f",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
