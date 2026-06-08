@@ -164,6 +164,18 @@ function sendShiftEmail(state) {
     html.push(listBlock("Alte pierderi", (s.loss.alte || []).filter(r => r.d), r => r.d + " — " + r.c));
   }
 
+  // recepție marfă
+  if (s.receptii && s.receptii.length) {
+    html.push("<h3>Recepție marfă</h3><ul>");
+    s.receptii.forEach(function (r) {
+      var flag = (r.cantitate === "Nu" || r.stare === "Nu") ? " — ⚠ de verificat" : " — ✓ ok";
+      html.push("<li>" + r.time + " — " + (r.furnizor || "—") + " · recepționat de " + r.cine +
+        " · cantitate corespunde: " + r.cantitate + " · stare bună: " + r.stare + flag +
+        (r.obs ? " · Obs: " + r.obs : "") + "</li>");
+    });
+    html.push("</ul>");
+  }
+
   // inventar (doar nr. produse numărate)
   if (s.inv) {
     var n = Object.keys(s.inv).filter(function (k) { return s.inv[k] !== "" && s.inv[k] != null; }).length;

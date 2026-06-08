@@ -204,7 +204,8 @@ label{font-size:14px;color:var(--ink-dim)}
       <h3>Sarcini azi</h3>
       <p class="muted" style="margin:4px 0 0">Reminderele apar automat ca pop-up. Pagina zilei e mai jos.</p>
     </div>
-    <button class="btn-ghost" style="width:100%;margin-bottom:14px" onclick="show('s-day')">Pagina zilei →</button>
+    <button class="btn-ghost" style="width:100%;margin-bottom:8px" onclick="show('s-day')">Pagina zilei →</button>
+    <button class="btn-ghost" style="width:100%;margin-bottom:14px" onclick="renderReceptie();show('s-receptie')">📦 Recepție marfă →</button>
     <button class="btn-primary" onclick="startClosing()">Închide tura</button>
   </section>
 
@@ -213,6 +214,28 @@ label{font-size:14px;color:var(--ink-dim)}
     <h2 class="title" id="day-title">Pagina zilei</h2>
     <p class="sub">Se face în timpul zilei · bifă + poză opțională.</p>
     <div class="card"><div id="day-list"></div></div>
+    <button class="btn-ghost" style="width:100%" onclick="show('s-dash')">← Înapoi la dashboard</button>
+  </section>
+
+  <!-- RECEPȚIE MARFĂ -->
+  <section id="s-receptie" class="screen">
+    <h2 class="title">Recepție marfă</h2>
+    <p class="sub">Completează la fiecare livrare primită.</p>
+    <div class="card">
+      <label>Cine a recepționat</label>
+      <div id="rec-cine" style="margin-top:6px"></div>
+      <label style="display:block;margin-top:12px">Furnizor / categorie marfă</label>
+      <input id="rec-furnizor" placeholder="ex. Metro, distribuitor băuturi..." style="margin-top:6px">
+      <label style="display:block;margin-top:12px">Cantitatea corespunde cu comanda/avizul?</label>
+      <div class="btn-row" id="rec-cant" style="margin-top:6px"></div>
+      <label style="display:block;margin-top:12px">Marfa e în stare bună / în termen de valabilitate?</label>
+      <div class="btn-row" id="rec-stare" style="margin-top:6px"></div>
+      <div style="margin-top:12px" id="rec-photo-row"></div>
+      <label style="display:block;margin-top:12px">Observații</label>
+      <textarea id="rec-obs" placeholder="Lipsuri, produse deteriorate, de semnalat..." style="margin-top:6px"></textarea>
+      <button class="btn-primary" style="width:100%;margin-top:14px" onclick="saveReceptie()">Salvează recepția</button>
+    </div>
+    <div id="rec-list"></div>
     <button class="btn-ghost" style="width:100%" onclick="show('s-dash')">← Înapoi la dashboard</button>
   </section>
 
@@ -377,7 +400,7 @@ let S = load();
 function load(){
   try{const raw=localStorage.getItem("send_"+todayKey());if(raw)return JSON.parse(raw);}catch(e){}
   return { date:todayKey(), team:[], morning:{}, day:{}, inv:{}, loss:{consum:[{p:"",c:""}],pahare:[{t:"",n:""}],alte:[{d:"",c:""}]},
-           cash:{}, final:{}, remLog:[], started:false, closed:false, phase:"" };
+           cash:{}, final:{}, receptii:[], remLog:[], started:false, closed:false, phase:"" };
 }
 function save(){try{localStorage.setItem("send_"+todayKey(),JSON.stringify(S));}catch(e){}
   if(CONFIG.BACKEND_URL) backend("autosave",{state:S}); }
@@ -534,6 +557,64 @@ function makePhotoBtn(has,onpick,fereastra,categorie){
 }
 function uploadPhoto(dataUrl,fereastra,categorie){
   backend("uploadPhoto",{photo:dataUrl,fereastra,categorie});
+}
+
+/* ============================================================
+   RECEPȚIE MARFĂ
+   ============================================================ */
+let recDraft={};
+function renderReceptie(){
+  recDraft={cine:"",furnizor:"",cantitate:"",stare:"",photo:false,obs:""};
+  const cine=$("rec-cine");cine.innerHTML="";
+  cine.appendChild(sel(S.team.map(t=>t.name),"","Alege persoana...",v=>recDraft.cine=v));
+  const fz=$("rec-furnizor");fz.value="";fz.oninput=()=>recDraft.furnizor=fz.value;
+  yesNo("rec-cant",recDraft.cantitate,v=>recDraft.cantitate=v);
+  yesNo("rec-stare",recDraft.stare,v=>recDraft.stare=v);
+  const pr=$("rec-photo-row");pr.innerHTML="";
+  pr.appendChild(makePhotoBtn(false,()=>{recDraft.photo=true;},"Recepție marfă",fz.value||"Aviz"));
+  const ob=$("rec-obs");ob.value="";ob.oninput=()=>recDraft.obs=ob.value;
+  renderRecList();
+}
+function yesNo(id,picked,onPick){
+  const wrap=$(id);wrap.innerHTML="";
+  const opts=[["Da","ok"],["Nu","bad"]];
+  function paint(){
+    wrap.querySelectorAll("button").forEach((b,i)=>{
+      const[v,c]=opts[i];
+      b.style.cssText="font-weight:600;"+(picked===v
+        ?"background:var(--"+c+"-bg);color:var(--"+c+");border:1px solid var(--"+c+")"
+        :"background:var(--surface-2);border:1px solid var(--line);color:var(--ink-dim)");
+    });
+  }
+  opts.forEach(([v])=>{
+    const b=document.createElement("button");b.textContent=v;
+    b.onclick=()=>{picked=v;onPick(v);paint();};
+    wrap.appendChild(b);
+  });
+  paint();
+}
+function saveReceptie(){
+  if(!recDraft.cine){toast("Alege cine a recepționat marfa.");return;}
+  if(!recDraft.cantitate||!recDraft.stare){toast("Răspunde la ambele întrebări Da/Nu.");return;}
+  const rec={...recDraft,time:hm(new Date())};
+  S.receptii.push(rec);save();
+  backend("saveReceptie",{receptie:rec});
+  toast("Recepție salvată.");
+  renderReceptie();
+}
+function renderRecList(){
+  const c=$("rec-list");c.innerHTML="";
+  if(!S.receptii.length)return;
+  const card=document.createElement("div");card.className="card";
+  card.innerHTML="<h3>Recepții azi</h3>";
+  S.receptii.forEach(r=>{
+    const probleme=(r.cantitate==="Nu"||r.stare==="Nu");
+    const row=document.createElement("div");row.className="row";
+    row.innerHTML='<span>'+r.time+' — '+(r.furnizor||"—")+' · '+r.cine+'</span>'+
+                  (probleme?'<span class="pill warn">⚠ verifică</span>':'<span class="pill ok">✓ ok</span>');
+    card.appendChild(row);
+  });
+  c.appendChild(card);
 }
 
 /* ============================================================
