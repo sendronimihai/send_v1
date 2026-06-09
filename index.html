@@ -305,6 +305,7 @@ label{font-size:14px;color:var(--ink-dim)}
     <p class="sub">Adaugă, oprește sau modifică reminderele zilnice.</p>
     <div id="admin-rem-list"></div>
     <button class="btn-ghost" style="width:100%;margin:4px 0 10px" onclick="openReminderEditor(-1)">+ Adaugă reminder</button>
+    <button class="btn-ghost" style="width:100%;margin-bottom:10px;color:var(--bad);border-color:var(--bad)" onclick="resetRemindersGate()">↺ Resetează la implicit</button>
     <button class="btn-ghost" style="width:100%" onclick="show('s-dash')">← Înapoi la dashboard</button>
   </section>
 
@@ -423,7 +424,7 @@ const DAY_NAMES=["Duminică","Luni","Marți","Miercuri","Joi","Vineri","Sâmbăt
 const REMINDERS = [
   {id:"muzica", t:"Pornește muzica", type:"done", zone:"Bar", times:["09:00"], sound:false},
   {id:"fifo", t:"Etichetare și rotație FIFO produse desfăcute la bar", type:"done", zone:"Bar", times:["09:00"], sound:false},
-  {id:"toalete", t:"Verifică toaletele", type:"done", zone:"Sală", interval:120, from:10, to:22, sound:true},
+  {id:"toalete", t:"Verifică toaletele", type:"done", zone:"Sală", times:["09:00","12:00","14:00","17:00","18:00","19:00","21:00","22:30"], sound:true},
   {id:"frig", t:"Verifică frigiderele", type:"done", zone:"Bar + Bucătărie", times:["11:00","17:00"], sound:false},
   {id:"cross", t:"Cross-check bar", type:"done", zone:"Bar", times:["09:45"], sound:false},
   {id:"stocp", t:"Verificare stoc prânz (suc lămâie, felii lămâie+mentă, cafea ice coffee, lime, matcha, ceai Galaxy)", type:"done", zone:"Bar", times:["15:00"], sound:true},
@@ -431,8 +432,9 @@ const REMINDERS = [
   {id:"mic", t:"Pune microfoanele la încărcat", type:"done", zone:"Bar", times:["10:00"], days:[5], sound:true},
   {id:"incarcare", t:"Pune POS-ul, telefonul și tableta la încărcat", type:"done", zone:"Toți", times:["22:00"], sound:true},
   {id:"seara", t:"Începe curățenia de seară", type:"done", zone:"Toți", times:["23:00"], sound:true},
-  {id:"prez", t:"Avem personal unde sunt clienții?", type:"yesno", bad:"Nu", zone:"Toți", interval:60, from:8, to:24, sound:true},
+  {id:"prez", t:"Avem personal unde sunt clienții?", type:"yesno", bad:"Nu", zone:"Toți", times:["09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00","21:00","22:00","22:30"], sound:true},
   {id:"tel", t:"A stat cineva pe telefon cât au fost mese ocupate?", type:"yesno", bad:"Da", zone:"Toți", interval:60, from:8, to:24, sound:true},
+  {id:"totok", t:"Tot ok?", type:"yesno", bad:"Nu", zone:"Toți", times:["09:00","09:20","09:40","10:00","10:20","10:40","11:00","11:20","11:40","12:00","12:20","12:40","13:00","13:20","13:40","14:00","14:20","14:40","15:00","15:20","15:40","16:00","16:20","16:40","17:00","17:20","17:40","18:00","18:20","18:40","19:00","19:20","19:40","20:00","20:20","20:40","21:00","21:20","21:40","22:00","22:20","22:40"], sound:true},
   {id:"cur", t:"Verificare curățenie (bar, bucătărie, terasă, interior, baie)", type:"photo", zone:"Toți", times:["12:00","17:00","22:30"], sound:true}
 ];
 
@@ -965,7 +967,18 @@ function selKV(pairs,val,ph,on){const s=document.createElement("select");s.style
   s.innerHTML=(ph?'<option value="">'+ph+'</option>':"")+pairs.map(([v,l])=>'<option value="'+v+'"'+(v===val?" selected":"")+'>'+l+'</option>').join("");
   s.onchange=()=>on(s.value);return s;}
 
-let delConfirm={};
+let delConfirm={}, resetConfirm=false;
+function resetRemindersGate(){
+  if(resetConfirm){
+    REM=JSON.parse(JSON.stringify(REMINDERS));
+    persistReminders();resetConfirm=false;
+    renderAdminReminders();renderDash();toast("Remindere resetate la implicit.");
+  } else {
+    resetConfirm=true;
+    toast("Apasă din nou pentru confirmare.");
+    setTimeout(()=>{resetConfirm=false;},3000);
+  }
+}
 function renderAdminReminders(){
   const c=$("admin-rem-list");c.innerHTML="";
   if(!REM.length){c.innerHTML='<p class="muted">Niciun reminder momentan.</p>';return;}
