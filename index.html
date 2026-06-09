@@ -622,12 +622,16 @@ function renderDay(){
   });
 }
 function makePhotoBtn(has,onpick,fereastra,categorie){
-  const lbl=document.createElement("label");lbl.className="photo"+(has?" has":"");
-  lbl.innerHTML=(has?"✓ Poză":"📷 Poză");
-  const inp=document.createElement("input");inp.type="file";inp.accept="image/*";inp.capture="environment";inp.style.display="none";
+  const wrap=document.createElement("span");wrap.style.display="inline-block";
+  const btn=document.createElement("button");btn.type="button";
+  btn.className="photo"+(has?" has":"");
+  btn.textContent=(has?"✓ Poză":"📷 Poză");
+  const inp=document.createElement("input");inp.type="file";inp.accept="image/*";inp.capture="environment";
+  inp.style.cssText="position:absolute;width:0;height:0;opacity:0;pointer-events:none";
   inp.onchange=()=>{const f=inp.files[0];if(!f)return;
     const rd=new FileReader();rd.onload=()=>{uploadPhoto(rd.result,fereastra,categorie);onpick();};rd.readAsDataURL(f);};
-  lbl.appendChild(inp);return lbl;
+  btn.onclick=()=>inp.click();
+  wrap.append(btn,inp);return wrap;
 }
 function uploadPhoto(dataUrl,fereastra,categorie){
   backend("uploadPhoto",{photo:dataUrl,fereastra,categorie});
