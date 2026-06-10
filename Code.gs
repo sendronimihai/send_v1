@@ -9,7 +9,7 @@
 
 const CONFIG = {
   ROOT_FOLDER_NAME: "SEND",            // folderul rădăcină în Drive
-  REPORT_EMAIL: "EMAIL@EXEMPLU.COM",   // <-- pune aici destinatarul raportului
+  REPORT_EMAIL: "sendroni.mihai@gmail.com",   // destinatarul raportului
   PRODUCTS_SHEET_ID: "1kz0Yy-vcJ6MYTqJgt9D3zMHNg84AQppFVTk6do-5Hj8"
 };
 
@@ -21,7 +21,7 @@ function doPost(e) {
   try {
     var req = JSON.parse(e.postData.contents);
     switch (req.action) {
-      case "getProducts": out.products = getProducts(req.sheetId || CONFIG.PRODUCTS_SHEET_ID); break;
+      case "getProducts": var gp = getProducts(req.sheetId || CONFIG.PRODUCTS_SHEET_ID); out.products = gp.products; out.mins = gp.mins; break;
       case "uploadPhoto": out.url = savePhoto(req.photo, req.categorie, req.fereastra, req.date); break;
       case "verifyPin":   out.valid = (String(req.pin || "") === getManagerPin()); break;
       case "sendEmail":   sendShiftEmail(req.state); break;
@@ -110,22 +110,28 @@ function saveState(date, state) {
 }
 
 /* ---------- Produse din Sheet ----------
- * Format așteptat în Sheet (foaia 1): col A = Categorie, col B = Produs.
+ * Format așteptat în Sheet (foaia 1): col A = Categorie, col B = Produs,
+ * col C = stoc minim (opțional — sub minim produsul intră pe lista de comandat).
  * (Categoria se poate repeta pe fiecare rând al produsului.)
  */
 function getProducts(sheetId) {
   var sh = SpreadsheetApp.openById(sheetId).getSheets()[0];
   var rows = sh.getDataRange().getValues();
-  var out = {}, lastCat = "Diverse";
+  var out = {}, mins = {}, lastCat = "Diverse";
   for (var i = 1; i < rows.length; i++) {       // i=1: sare peste antet
     var cat = String(rows[i][0] || "").trim();
     var prod = String(rows[i][1] || "").trim();
+    var min = rows[i][2];
     if (cat) lastCat = cat;
     if (!prod) continue;
     if (!out[lastCat]) out[lastCat] = [];
     out[lastCat].push(prod);
+    if (min !== "" && min != null && !isNaN(min)) {
+      if (!mins[lastCat]) mins[lastCat] = {};
+      mins[lastCat][prod] = Number(min);
+    }
   }
-  return out;
+  return { products: out, mins: mins };
 }
 
 /* ---------- Email raport de tură ---------- */
@@ -135,6 +141,27 @@ function sendShiftEmail(state) {
   html.push("<h2 style='font-family:Georgia,serif'>SEND — Raport tură " + (s.date || todayStr()) + "</h2>");
 
   html.push("<h3>Echipă</h3><p>" + (s.team || []).map(function (t) { return t.name + " (" + t.zone + ")"; }).join(", ") + "</p>");
+
+  // pregătire dimineață — cine a făcut / cine a verificat
+  if (s.morning) {
+    var secName = { barsala: "Bar/Terasă/Sală", bucatarie: "Bucătărie" };
+    var morn = [];
+    Object.keys(secName).forEach(function (k) {
+      if (s.morning[k + "_facut"] || s.morning[k + "_verif"])
+        morn.push(secName[k] + ": făcut de " + (s.morning[k + "_facut"] || "—") + ", verificat de " + (s.morning[k + "_verif"] || "—"));
+    });
+    if (morn.length) html.push("<h3>Pregătire dimineață</h3><p>" + morn.join("<br>") + "</p>");
+  }
+
+  // curățenie săptămânală — confirmările „făcut + verificat"
+  var wk = (s.remLog || []).filter(function (r) { return r.facut && r.verif; });
+  if (wk.length) {
+    html.push("<h3>Curățenie săptămânală</h3><ul>");
+    wk.forEach(function (r) { html.push("<li>" + r.t + " — făcut de " + r.facut + ", verificat de " + r.verif + " (" + r.time + ")</li>"); });
+    html.push("</ul>");
+  } else if (s.weeklyTask) {
+    html.push("<h3 style='color:#b54'>Curățenie săptămânală</h3><p>⚠ Neconfirmată azi: " + s.weeklyTask + "</p>");
+  }
 
   // remindere problematice
   var prob = (s.remLog || []).filter(function (r) {
@@ -192,6 +219,15 @@ function sendShiftEmail(state) {
     html.push("<h3>Inventar de seară</h3><p>" + n + " produse numărate (detalii în Sheet).</p>");
   }
 
+  // necesar de comandat (stoc sub minimul din col C a Sheet-ului de produse)
+  if (s.order && s.order.length) {
+    html.push("<h3 style='color:#b54'>Necesar de comandat</h3><ul>");
+    s.order.forEach(function (o) {
+      html.push("<li>" + o.p + " (" + o.cat + ") — stoc " + o.have + ", minim " + o.min + "</li>");
+    });
+    html.push("</ul>");
+  }
+
   // checklist final
   if (s.final) {
     html.push("<h3>Checklist final</h3><ul>");
@@ -208,6 +244,7 @@ function sendShiftEmail(state) {
 
   MailApp.sendEmail({
     to: CONFIG.REPORT_EMAIL,
+    cc: CONFIG.REPORT_EMAIL,   // CC către sine — altfel Gmail nu arată emailul în Inbox
     subject: "SEND — Raport tură " + (s.date || todayStr()),
     htmlBody: html.join("")
   });

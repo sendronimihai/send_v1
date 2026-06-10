@@ -404,6 +404,7 @@ const CONFIG = {
 /* ---------- date statice ---------- */
 const TEAM = ["Cipri","Samir","Bishma","Asmita","Ranjana","Sushma","Sujata"];
 const ZONES = [["bar","Bar"],["sala","Sală"],["bucatarie","Bucătărie"]];
+const VERIFIERS = ["Samir","Bishma","Cipri"];
 
 const MORNING = {
   barsala: { titlu:"BAR / TERASĂ / SALĂ", zones:["bar","sala"], proc1:true, items:["Pregătire sirop","Pregătire suc lămâie","Pregătire matcha","Pregătire ceai Galaxy","Pregătire fructe deshidratate","Pregătire coji SEND"], text:"Lipsește ceva?" },
@@ -435,7 +436,14 @@ const REMINDERS = [
   {id:"prez", t:"Avem personal unde sunt clienții?", type:"yesno", bad:"Nu", zone:"Toți", times:["09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00","21:00","22:00","22:30"], sound:true},
   {id:"tel", t:"A stat cineva pe telefon cât au fost mese ocupate?", type:"yesno", bad:"Da", zone:"Toți", interval:60, from:8, to:24, sound:true},
   {id:"totok", t:"Tot ok?", type:"yesno", bad:"Nu", zone:"Toți", times:["09:00","09:20","09:40","10:00","10:20","10:40","11:00","11:20","11:40","12:00","12:20","12:40","13:00","13:20","13:40","14:00","14:20","14:40","15:00","15:20","15:40","16:00","16:20","16:40","17:00","17:20","17:40","18:00","18:20","18:40","19:00","19:20","19:40","20:00","20:20","20:40","21:00","21:20","21:40","22:00","22:20","22:40"], sound:true},
-  {id:"cur", t:"Verificare curățenie (bar, bucătărie, terasă, interior, baie)", type:"photo", zone:"Toți", times:["12:00","17:00","22:30"], sound:true}
+  {id:"cur", t:"Verificare curățenie (bar, bucătărie, terasă, interior, baie)", type:"photo", zone:"Toți", times:["12:00","17:00","22:30"], sound:true},
+  {id:"sapt1", t:"Curățenie săptămânală: pompițele de sirop, frigiderele, bar, barmat pahare (geamuri + interior + măturat/spălat)", type:"verify", zone:"Toți", times:["10:00","12:00","14:00","16:00","18:00","20:00"], days:[1], sound:true},
+  {id:"sapt2", t:"Curățenie săptămânală: rafturi pahare/alcool, geamuri", type:"verify", zone:"Toți", times:["10:00","12:00","14:00","16:00","18:00","20:00"], days:[2], sound:true},
+  {id:"sapt3", t:"Curățenie săptămânală: aranjare magazie + vestiar", type:"verify", zone:"Toți", times:["10:00","12:00","14:00","16:00","18:00","20:00"], days:[3], sound:true},
+  {id:"sapt4", t:"Curățenie săptămânală: oglinzi, plante", type:"verify", zone:"Toți", times:["10:00","12:00","14:00","16:00","18:00","20:00"], days:[4], sound:true},
+  {id:"sapt5", t:"Curățenie săptămânală: pompițele de sirop, espressor, ceștile de cafea", type:"verify", zone:"Toți", times:["10:00","12:00","14:00","16:00","18:00","20:00"], days:[5], sound:true},
+  {id:"sapt6", t:"Curățenie săptămânală: pahare de sticlă, rafturi pahare (curățat praf)", type:"verify", zone:"Toți", times:["10:00","12:00","14:00","16:00","18:00","20:00"], days:[6], sound:true},
+  {id:"sapt0", t:"Curățenie săptămânală: măturat + spălat sub mese & canapele", type:"verify", zone:"Toți", times:["10:00","12:00","14:00","16:00","18:00","20:00"], days:[0], sound:true}
 ];
 
 /* Lista de remindere e editabilă din interfață (PIN manager) — versiunea
@@ -443,7 +451,14 @@ const REMINDERS = [
    REMINDERS de mai sus rămâne sursa implicită la prima rulare. */
 const REM_KEY="send_reminders_v1";
 function loadReminders(){
-  try{const raw=localStorage.getItem(REM_KEY);if(raw)return JSON.parse(raw);}catch(e){}
+  try{const raw=localStorage.getItem(REM_KEY);
+    if(raw){const list=JSON.parse(raw);
+      // reminderele implicite noi (adăugate în cod ulterior) intră automat în lista salvată
+      let added=false;
+      REMINDERS.forEach(d=>{if(!list.some(r=>r.id===d.id)){list.push(JSON.parse(JSON.stringify(d)));added=true;}});
+      if(added)localStorage.setItem(REM_KEY,JSON.stringify(list));
+      return list;}
+  }catch(e){}
   return JSON.parse(JSON.stringify(REMINDERS));
 }
 let REM=loadReminders();
@@ -474,14 +489,29 @@ const FINAL_ITEMS=["Este curat în baie?","Este bucătăria curată?","Este cura
 function todayKey(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
 let S = load();
 function load(){
-  try{const raw=localStorage.getItem("send_"+todayKey());if(raw)return JSON.parse(raw);}catch(e){}
+  try{const raw=localStorage.getItem("send_"+todayKey());if(raw){const s=JSON.parse(raw);if(!s.remDone)s.remDone={};return s;}}catch(e){}
   return { date:todayKey(), team:[], morning:{}, day:{}, inv:{}, loss:{consum:[{p:"",c:""}],pahare:[{t:"",n:""}],alte:[{d:"",c:""}]},
-           cash:{}, final:{}, receptii:[], remLog:[], started:false, closed:false, phase:"" };
+           cash:{}, final:{}, receptii:[], remLog:[], remDone:{}, started:false, closed:false, phase:"" };
 }
 function save(){try{localStorage.setItem("send_"+S.date,JSON.stringify(S));}catch(e){}
   if(CONFIG.BACKEND_URL) backend("autosave",{state:S}); }
 
 let PRODUCTS = PRODUCTS_FALLBACK;
+let MINS = {}; // stoc minim pe produs (col C din Sheet) — sub minim intră pe lista de comandat
+
+function buildOrderList(){
+  const order=[];
+  Object.entries(PRODUCTS).forEach(([cat,items],ci)=>{
+    items.forEach((p,ii)=>{
+      const min=MINS[cat]&&MINS[cat][p];
+      if(min==null)return;
+      const v=S.inv[ci+"_"+ii];
+      if(v===undefined||v==="")return;
+      if(num(v)<min)order.push({cat,p,have:num(v),min});
+    });
+  });
+  S.order=order;save();
+}
 
 /* ============================================================
    UTIL
@@ -521,6 +551,7 @@ async function backend(action,payload){
 async function loadProducts(){
   const res=await backend("getProducts",{sheetId:CONFIG.PRODUCTS_SHEET_ID});
   if(res&&res.products)PRODUCTS=res.products;
+  if(res&&res.mins)MINS=res.mins;
 }
 
 /* ============================================================
@@ -580,6 +611,14 @@ function renderMorning(){
       ta.oninput=()=>{S.morning[key+"_text"]=ta.value;save();};
       wrap.appendChild(ta);card.appendChild(wrap);
     }
+    const vRow=document.createElement("div");vRow.style.cssText="display:flex;gap:8px;margin-top:12px";
+    vRow.append(sel(S.team.map(t=>t.name),S.morning[key+"_facut"]||"","Făcut de…",v=>{S.morning[key+"_facut"]=v;save();renderMorning();}),
+                sel(VERIFIERS,S.morning[key+"_verif"]||"","Verificat de…",v=>{S.morning[key+"_verif"]=v;save();renderMorning();}));
+    card.appendChild(vRow);
+    if(S.morning[key+"_facut"]&&S.morning[key+"_facut"]===S.morning[key+"_verif"]){
+      const w=document.createElement("div");w.className="warnline";w.style.marginTop="8px";
+      w.textContent="⚠ Verificatorul trebuie să fie altă persoană.";card.appendChild(w);
+    }
     c.appendChild(card);
   });
   gateFor("s-morning");
@@ -592,7 +631,14 @@ function morningRequired(){
   });
   return req;
 }
-function morningDone(){return morningRequired().every(k=>S.morning[k]);}
+function morningDone(){
+  if(!morningRequired().every(k=>S.morning[k]))return false;
+  return Object.entries(MORNING).every(([key,sec])=>{
+    if(!sec.zones.some(z=>activeZones().includes(z)))return true;
+    const f=S.morning[key+"_facut"],v=S.morning[key+"_verif"];
+    return f&&v&&f!==v;
+  });
+}
 
 /* ============================================================
    3. DASHBOARD
@@ -822,7 +868,7 @@ function gateFor(id){
   const gate=$("gate"),btn=$("gate-btn"),msg=$("gate-msg");
   const map={
     "s-staff":{ok:()=>S? Object.values(staffState).some(s=>s.on&&s.zone):false, lock:"Selectează cine lucrează și zona.", open:"Gata — pornește.", label:"Continuă"},
-    "s-morning":{ok:morningDone, lock:"Bifează tot pentru a porni tura.", open:"Totul bifat — poți începe.", label:"Începe tura"},
+    "s-morning":{ok:morningDone, lock:"Bifează tot și alege cine a făcut + cine a verificat.", open:"Totul bifat și verificat — poți începe.", label:"Începe tura"},
     "s-inv":{ok:invDone, lock:"Numără tot inventarul.", open:"Inventar complet.", label:"Continuă"},
     "s-loss":{ok:lossDone, lock:"", open:"Completat.", label:"Continuă"},
     "s-cash":{ok:cashDone, lock:"Completează raportul Z și soldul precedent.", open:"Casă reconciliată.", label:"Continuă"},
@@ -847,7 +893,7 @@ function gateAction(){
     S.started=true;save();backend("saveMorning",{morning:S.morning});
     renderDash();renderDay();show("s-dash");startReminders();
   }
-  else if(id==="s-inv"){ backend("saveInventory",{inv:S.inv}); renderLoss();show("s-loss"); }
+  else if(id==="s-inv"){ buildOrderList(); backend("saveInventory",{inv:S.inv,order:S.order}); renderLoss();show("s-loss"); }
   else if(id==="s-loss"){ backend("saveLosses",{loss:S.loss}); show("s-cash");calcCash(); }
   else if(id==="s-cash"){ backend("saveCash",{cash:S.cash}); renderFinal();show("s-final"); }
   else if(id==="s-final"){ closeShift(); }
@@ -862,7 +908,7 @@ function startClosing(){
   renderInventory();show("s-inv");
 }
 async function closeShift(){
-  S.closed=true;S.phase="closed";save();
+  S.closed=true;S.phase="closed";buildOrderList();save();
   await backend("saveFinal",{final:S.final});
   await backend("sendEmail",{state:S});
   toast("Tura închisă · raport trimis");
@@ -874,13 +920,19 @@ async function closeShift(){
    REMINDERE (în aplicație, cât tableta e pe app)
    ============================================================ */
 let remTimer=null, remFired={}, remQueue=[], remActive=false;
-function startReminders(){ if(remTimer)return; remTimer=setInterval(remCheck,30000); remCheck(); }
+function startReminders(){ if(remTimer)return;
+  // ține minte sarcina săptămânală a zilei — emailul de seară avertizează dacă nu a fost confirmată
+  const dow=new Date().getDay();
+  const wt=REM.find(r=>r.type==="verify"&&r.active!==false&&(!r.days||r.days.includes(dow)));
+  if(wt&&S.weeklyTask!==wt.t){S.weeklyTask=wt.t;save();}
+  remTimer=setInterval(remCheck,30000); remCheck(); }
 function hm(d){return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");}
 function remCheck(){
   const d=new Date(),now=hm(d),dow=d.getDay(),h=d.getHours(),m=d.getMinutes();
   REM.forEach(r=>{
     if(r.active===false)return;
     if(r.days&&!r.days.includes(dow))return;
+    if(r.type==="verify"&&S.remDone[r.id])return; // confirmată azi — nu mai apare
     let fire=false;
     if(r.times&&r.times.includes(now))fire=true;
     if(r.interval&&h>=r.from&&h<r.to&&(h*60+m)%r.interval===0)fire=true;
@@ -901,18 +953,18 @@ function closingWindowCheck(d){
       remQueue.push({id:"close",t:"Închide tura — raportul pleacă la 23:58!",type:"done",zone:"Toți",sound:true});}
   }
   // trimitere automată la 23:58, chiar dacă nu s-a apăsat
-  if(now==="23:58"&&!emailSent){emailSent=true;S._emailSent=true;save();
+  if(now==="23:58"&&!emailSent){emailSent=true;S._emailSent=true;buildOrderList();save();
     backend("sendEmail",{state:S});toast("Raport trimis automat (23:58)");}
 }
 function showReminder(r){
   remActive=true;
-  $("rem-ic").textContent=r.type==="yesno"?"❓":r.type==="photo"?"📷":"🔔";
+  $("rem-ic").textContent=r.type==="yesno"?"❓":r.type==="photo"?"📷":r.type==="verify"?"🧽":"🔔";
   $("rem-time").textContent="REMINDER · "+hm(new Date());
   $("rem-title").textContent=r.t;
   $("rem-zone").textContent=r.zone;
   const act=$("rem-actions");act.innerHTML="";
-  function done(resp){ S.remLog.push({id:r.id,t:r.t,resp,time:hm(new Date())}); save();
-    backend("saveReminder",{id:r.id,resp,time:hm(new Date())});
+  function done(resp,extra){ S.remLog.push(Object.assign({id:r.id,t:r.t,resp,time:hm(new Date())},extra||{})); save();
+    backend("saveReminder",Object.assign({id:r.id,resp,time:hm(new Date())},extra||{}));
     $("rem-overlay").classList.remove("show");remActive=false;
     if(remQueue.length)setTimeout(()=>showReminder(remQueue.shift()),400); }
   if(r.type==="yesno"){
@@ -935,6 +987,22 @@ function showReminder(r){
     act.appendChild(grid);
     const gata=document.createElement("button");gata.className="btn-primary";gata.textContent="Gata";
     gata.onclick=()=>done("fotografiat");act.appendChild(gata);
+  } else if(r.type==="verify"){
+    let facut="",verif="";
+    const selRow=document.createElement("div");selRow.style.cssText="display:flex;gap:8px;margin-bottom:10px";
+    const warn=document.createElement("div");warn.className="warnline";warn.style.cssText="display:none;margin-bottom:10px";
+    warn.textContent="⚠ Verificatorul trebuie să fie altă persoană.";
+    const row=document.createElement("div");row.className="btn-row";
+    const later=document.createElement("button");later.className="btn-ghost";later.textContent="Mai târziu";
+    const ok=document.createElement("button");ok.className="btn-primary";ok.textContent="Confirmă";ok.disabled=true;
+    function upd(){const same=facut&&verif&&facut===verif;warn.style.display=same?"block":"none";
+      ok.disabled=!(facut&&verif&&facut!==verif);}
+    selRow.append(sel(S.team.map(t=>t.name),"","Făcut de…",v=>{facut=v;upd();}),
+                  sel(VERIFIERS,"","Verificat de…",v=>{verif=v;upd();}));
+    later.onclick=()=>{$("rem-overlay").classList.remove("show");remActive=false;
+      if(remQueue.length)setTimeout(()=>showReminder(remQueue.shift()),400);};
+    ok.onclick=()=>{S.remDone[r.id]=true;done("făcut",{facut,verif});};
+    row.append(later,ok);act.append(selRow,warn,row);
   } else {
     const row=document.createElement("div");row.className="btn-row";
     const sn=document.createElement("button");sn.className="btn-ghost";sn.textContent="Amână 10 min";
@@ -1022,7 +1090,7 @@ function renderAdminReminders(){
   });
 }
 
-const RESPONSE_TYPES=[["done","Bifare (am făcut)"],["yesno","Da / Nu"],["photo","Poză"]];
+const RESPONSE_TYPES=[["done","Bifare (am făcut)"],["yesno","Da / Nu"],["photo","Poză"],["verify","Făcut + verificat (în doi)"]];
 let reDraft=null, reEditIndex=-1;
 function openReminderEditor(i){
   reEditIndex=i;
@@ -1134,6 +1202,20 @@ async function boot(){
   }
 }
 if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js").catch(()=>{});}
+
+/* Wake Lock — ecranul tabletei rămâne aprins cât aplicația e vizibilă */
+let wakeLock=null;
+async function requestWakeLock(){
+  if(!("wakeLock" in navigator))return;
+  try{
+    wakeLock=await navigator.wakeLock.request("screen");
+    wakeLock.addEventListener("release",()=>{wakeLock=null;});
+  }catch(e){}
+}
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")requestWakeLock();});
+document.addEventListener("click",()=>{if(!wakeLock)requestWakeLock();},true);
+requestWakeLock();
+
 boot();
 </script>
 </body>
