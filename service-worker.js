@@ -1,5 +1,5 @@
 /* SEND service worker — cache app shell pentru funcționare offline */
-const CACHE = "send-v2";
+const CACHE = "send-v1";
 const ASSETS = ["index.html","manifest.json","icon.svg"];
 
 self.addEventListener("install", e => {
@@ -14,21 +14,8 @@ self.addEventListener("activate", e => {
 
 self.addEventListener("fetch", e => {
   const url = new URL(e.request.url);
+  // Cererile către backend (Apps Script) trec mereu prin rețea, nu se pun în cache.
   if (url.hostname.includes("script.google.com")) return;
-
-  // index.html: mereu din rețea (versiunea nouă), cache doar ca fallback offline
-  if (url.pathname === "/" || url.pathname.endsWith("/index.html") || url.pathname.endsWith("send_v1/")) {
-    e.respondWith(
-      fetch(e.request).then(res => {
-        const copy = res.clone();
-        caches.open(CACHE).then(c => c.put(e.request, copy));
-        return res;
-      }).catch(() => caches.match("index.html"))
-    );
-    return;
-  }
-
-  // Alte resurse (manifest, icon): cache-first
   e.respondWith(
     caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
       if (e.request.method === "GET" && res.ok && url.origin === self.location.origin) {
