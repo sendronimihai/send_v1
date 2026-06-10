@@ -503,7 +503,8 @@ function beep(){try{const a=new(window.AudioContext||window.webkitAudioContext)(
 
 /* clock */
 function tick(){const d=new Date();$("clk-t").textContent=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
-  $("clk-d").textContent=d.toLocaleDateString("ro-RO",{weekday:"long",day:"numeric",month:"long"});}
+  $("clk-d").textContent=d.toLocaleDateString("ro-RO",{weekday:"long",day:"numeric",month:"long"});
+  if(S.date&&S.date!==todayKey()){location.reload();}}
 setInterval(tick,1000);tick();
 
 /* ============================================================
