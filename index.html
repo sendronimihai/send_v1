@@ -550,7 +550,7 @@ async function backend(action,payload){
 }
 async function loadProducts(){
   const res=await backend("getProducts",{sheetId:CONFIG.PRODUCTS_SHEET_ID});
-  if(res&&res.products)PRODUCTS=res.products;
+  if(res&&res.products&&Object.keys(res.products).length)PRODUCTS=res.products;
   if(res&&res.mins)MINS=res.mins;
 }
 
