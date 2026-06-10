@@ -920,12 +920,21 @@ function showReminder(r){
     const da=document.createElement("button");da.textContent="Da";da.style.cssText="background:var(--bad-bg);color:var(--bad)";
     const nu=document.createElement("button");nu.textContent="Nu";nu.style.cssText="background:var(--ok-bg);color:var(--ok)";
     da.onclick=()=>done("Da");nu.onclick=()=>done("Nu");row.append(da,nu);act.appendChild(row);
-  } else if(r.type==="photo"){
-    const p="<p class='muted' style='margin:0 0 12px'>La „Da”, fă poză pentru: bar, bucătărie, terasă, interior, baie.</p>";
-    act.innerHTML=p;
-    const b=document.createElement("button");b.className="btn-primary";b.textContent="Deschide verificarea";
-    b.onclick=()=>{done("ok");toast("Fă pozele în secțiunea de curățenie");};
-    act.appendChild(b);
+  } else if(r.type===”photo”){
+    const zones=r.zones||[“Bar”,”Bucătărie”,”Terasă”,”Interior”,”Baie”];
+    const lbl=document.createElement(“p”);lbl.className=”muted”;lbl.style.cssText=”margin:0 0 10px;font-size:0.9em”;
+    lbl.textContent=”Fă poze pentru fiecare zonă:”;act.appendChild(lbl);
+    const grid=document.createElement(“div”);grid.style.cssText=”display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px”;
+    zones.forEach(z=>{
+      const w=makePhotoBtn(false,()=>{
+        const b=w.querySelector(“button”);b.className=”photo has”;b.textContent=”✓ “+z;
+      },”Reminder_”+r.id,z);
+      w.querySelector(“button”).textContent=”📷 “+z;
+      grid.appendChild(w);
+    });
+    act.appendChild(grid);
+    const gata=document.createElement(“button”);gata.className=”btn-primary”;gata.textContent=”Gata”;
+    gata.onclick=()=>done(“fotografiat”);act.appendChild(gata);
   } else {
     const row=document.createElement("div");row.className="btn-row";
     const sn=document.createElement("button");sn.className="btn-ghost";sn.textContent="Amână 10 min";
