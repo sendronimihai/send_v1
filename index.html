@@ -538,6 +538,7 @@ let MINS = {}; // stoc minim pe produs (col C din Sheet) — sub minim intră pe
 function buildOrderList(){
   const order=[], inv_named={};
   Object.entries(PRODUCTS).forEach(([cat,items],ci)=>{
+    if(!catActiveToday(cat))return;   // doar categoriile zilei de azi
     items.forEach((p,ii)=>{
       const v=S.inv[ci+"_"+ii];
       if(v===undefined||v==="")return;
