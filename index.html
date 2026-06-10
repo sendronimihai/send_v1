@@ -1124,7 +1124,7 @@ async function boot(){
     renderDash();renderDay();show("s-dash");startReminders();
   }
 }
-if("serviceWorker" in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister()));}
+if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js").catch(()=>{});}
 boot();
 </script>
 </body>
