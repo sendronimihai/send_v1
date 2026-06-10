@@ -213,17 +213,32 @@ function sendShiftEmail(state) {
     html.push("</ul>");
   }
 
-  // inventar (doar nr. produse numărate)
-  if (s.inv) {
-    var n = Object.keys(s.inv).filter(function (k) { return s.inv[k] !== "" && s.inv[k] != null; }).length;
-    html.push("<h3>Inventar de seară</h3><p>" + n + " produse numărate (detalii în Sheet).</p>");
+  // urgent / necesar azi
+  if (s.urgent && s.urgent.trim()) {
+    html.push("<h3 style='color:#b54'>⚠ Urgent / Necesar azi</h3><p style='white-space:pre-wrap'>" + s.urgent + "</p>");
   }
 
-  // necesar de comandat (stoc sub minimul din col C a Sheet-ului de produse)
+  // inventar de seară — stocuri complete
+  if (s.inv_named && Object.keys(s.inv_named).length) {
+    html.push("<h3>Inventar de seară</h3>");
+    Object.keys(s.inv_named).forEach(function (cat) {
+      html.push("<p style='margin:8px 0 2px'><b>" + cat + "</b></p><ul style='margin:0'>");
+      s.inv_named[cat].forEach(function (o) {
+        var subMin = s.order && s.order.some(function (ord) { return ord.p === o.p && ord.cat === cat; });
+        html.push("<li>" + o.p + ": <b>" + o.qty + "</b>" + (subMin ? " ⚠" : "") + "</li>");
+      });
+      html.push("</ul>");
+    });
+  } else if (s.inv) {
+    var n = Object.keys(s.inv).filter(function (k) { return s.inv[k] !== "" && s.inv[k] != null; }).length;
+    html.push("<h3>Inventar de seară</h3><p>" + n + " produse numărate.</p>");
+  }
+
+  // necesar de comandat (sub minim) — marcat cu ⚠ și în inventar
   if (s.order && s.order.length) {
-    html.push("<h3 style='color:#b54'>Necesar de comandat</h3><ul>");
+    html.push("<h3 style='color:#b54'>Necesar de comandat (sub minim)</h3><ul>");
     s.order.forEach(function (o) {
-      html.push("<li>" + o.p + " (" + o.cat + ") — stoc " + o.have + ", minim " + o.min + "</li>");
+      html.push("<li>" + o.p + " (" + o.cat + ") — stoc <b>" + o.have + "</b>, minim " + o.min + "</li>");
     });
     html.push("</ul>");
   }

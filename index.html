@@ -207,6 +207,10 @@ label{font-size:14px;color:var(--ink-dim)}
       <h3>Sarcini azi</h3>
       <p class="muted" style="margin:4px 0 0">Reminderele apar automat ca pop-up. Pagina zilei e mai jos.</p>
     </div>
+    <div class="card" style="border:1px solid var(--bad);background:var(--bad-bg)">
+      <h3 style="color:var(--bad);margin:0 0 8px">⚠ Urgent / Necesar azi</h3>
+      <textarea id="urgent-field" placeholder="Scrie aici ce e urgent sau necesar pentru azi..." style="border-color:var(--bad)" oninput="S.urgent=this.value;save()"></textarea>
+    </div>
     <button class="btn-ghost" style="width:100%;margin-bottom:8px" onclick="show('s-day')">Pagina zilei →</button>
     <button class="btn-ghost" style="width:100%;margin-bottom:14px" onclick="renderReceptie();show('s-receptie')">📦 Recepție marfă →</button>
     <button class="btn-primary" onclick="startClosing()">Închide tura</button>
@@ -490,8 +494,8 @@ const INV_DAYS = {
   "Consumabile Bar":             [1],
   "Consumabile Bai + Cleaning":  [1],
   "Consumabile Băi + Cleaning":  [1],
-  "Bucatarie":                   [1],
-  "Bucătărie":                   [1],
+  "Bucatarie":                   null,
+  "Bucătărie":                   null,
   "Bere":                        [2],
   "Sucuri Mocktails":            [3],
   "Sucuri Limonade":             [3],
@@ -532,17 +536,19 @@ let PRODUCTS = PRODUCTS_FALLBACK;
 let MINS = {}; // stoc minim pe produs (col C din Sheet) — sub minim intră pe lista de comandat
 
 function buildOrderList(){
-  const order=[];
+  const order=[], inv_named={};
   Object.entries(PRODUCTS).forEach(([cat,items],ci)=>{
     items.forEach((p,ii)=>{
-      const min=MINS[cat]&&MINS[cat][p];
-      if(min==null)return;
       const v=S.inv[ci+"_"+ii];
       if(v===undefined||v==="")return;
+      if(!inv_named[cat])inv_named[cat]=[];
+      inv_named[cat].push({p,qty:num(v)});
+      const min=MINS[cat]&&MINS[cat][p];
+      if(min==null)return;
       if(num(v)<min)order.push({cat,p,have:num(v),min});
     });
   });
-  S.order=order;save();
+  S.order=order;S.inv_named=inv_named;save();
 }
 
 /* ============================================================
@@ -681,6 +687,7 @@ function renderDash(){
     const s=document.createElement("span");s.className="pill";s.textContent=p.name+" · "+zl;t.appendChild(s);});
   const pending=REM.filter(r=>r.active!==false).length;
   $("dash-rem").textContent="🔔 "+pending+" remindere active";
+  const uf=$("urgent-field");if(uf)uf.value=S.urgent||"";
 }
 
 /* ============================================================
