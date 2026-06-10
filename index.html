@@ -246,6 +246,7 @@ label{font-size:14px;color:var(--ink-dim)}
   <section id="s-inv" class="screen">
     <h2 class="title">Inventar de seară</h2>
     <p class="sub">Activ de la 22:00 · <span id="inv-prog">0/0</span> numărate</p>
+    <p class="muted" id="inv-day-label" style="font-size:12px;margin:-6px 0 10px"></p>
     <input id="inv-search" placeholder="Caută produs..." style="margin-bottom:12px" oninput="renderInventory()">
     <div id="inv-list"></div>
   </section>
@@ -471,7 +472,7 @@ const PRODUCTS_FALLBACK = {
   "Bucătărie":["Caputo roșu","Caputo albastru","Semola","Sos roșii","Busuioc mic","Busuioc mare","Salam dolce","Salam picant","Drojdie","Ulei","Sos picant","Mozzarella","Sare","Paline"],
   "Bere":["Corona","Ursus","Ursus 0%","Ursus nefiltrată","Peroni","Ursus Cooler","Peroni KEG (tap)"],
   "Sucuri Limonade":["Portocale","Piersici","Ananas","Măr","Cranberry","Sprite","Schweppes","Aloe Vera","Sclipici","Ceai fasolea fluturilor","Matcha"],
-  "Sucuri (mixere)":["Cola 0,5L","Apă tonică 0,5L","Apă tonică roz 0,5L","Apă minerală 0,5L"],
+  "Sucuri cocktail":["Cola 0,5L","Apă tonică 0,5L","Apă tonică roz 0,5L","Apă minerală 0,5L"],
   "Spirtoase":["Finlandia (Vodka)","Jameson (Whiskey)","Wild Turkey (Whiskey)","Jose Cuervo (Tequila)","Martell VS (Cognac)","Aperol"],
   "Ginuri":["Beefeater Dry","Tanqueray Classic","Tanqueray 0%","Beefeater Pink","Bombay"],
   "Sucuri Gama Cola":["Cola","Cola 0%","Fanta","Sprite","Schweppes","Schweppes Pink","Dorna plată","Dorna minerală"],
@@ -480,6 +481,37 @@ const PRODUCTS_FALLBACK = {
   "Siropuri / Piureuri":["Caramel","Caramel sărat","Ciocolată","Vanilie","Hazelnut","Tiramisu","Coconut","Mint","Soc","Grenadine","Le Blue","piure Passion","piure Wildberry","piure Raspberry","piure Strawberry"],
   "Consumabile Cafea":["Cafea","Cafea Deco","Lapte","Lapte vegan","Frișcă","Ciocolată","Ceaiuri","Zahăr KG","Piscoturi","Patroane frișcă","Plicuri scorțișoară/chili/cacao","Miere","Zahăr plic"]
 };
+
+/* Zile de inventar per categorie (0=Dum, 1=Lun, 2=Mar, 3=Mie, 4=Joi, 5=Vin, 6=Sâm).
+   null = zilnic. Categorii absente din hartă = afișate mereu (fallback sigur). */
+const INV_DAYS = {
+  "Fructe + Verdeata":  null,
+  "Fructe + Verdeață":  null,
+  "Consumabile Bar":             [1],
+  "Consumabile Bai + Cleaning":  [1],
+  "Consumabile Băi + Cleaning":  [1],
+  "Bucatarie":                   [1],
+  "Bucătărie":                   [1],
+  "Bere":                        [2],
+  "Sucuri Mocktails":            [3],
+  "Sucuri Limonade":             [3],
+  "Sucuri cocktail":             [1,3],
+  "Sucuri (mixere)":             [1,3],
+  "Sucuri Gama Cola":            [1,3],
+  "Spirtoase":                   [4],
+  "Ginuri":                      [4],
+  "Lichior":                     [4],
+  "Prosecco & Vinuri":           [4],
+  "Siropuri / Piureuri":         [1],
+  "Siropuri/Piuree":             [1],
+  "Consumabile Cafea":           [1]
+};
+function catActiveToday(cat){
+  if(!(cat in INV_DAYS))return true;     // necunoscut → afișează mereu
+  const d=INV_DAYS[cat];
+  if(d===null)return true;               // zilnic
+  return d.includes(new Date().getDay());
+}
 const GLASS_TYPES=["Pahar 150ml","Pahar 300ml","Pahar 400ml","Pahar limonadă","Pahar sticlă"];
 const FINAL_ITEMS=["Este curat în baie?","Este bucătăria curată?","Este curat în bar și în cafenea?","Mesele de pe terasă aranjate? Umbrele strânse?","Z + sold final verificate; telefoane, POS, tabletă la încărcat?"];
 
@@ -751,12 +783,25 @@ let invExpanded={};
 function renderInventory(){
   const term=($("inv-search").value||"").trim().toLowerCase();
   const c=$("inv-list");c.innerHTML="";let total=0,counted=0;
+  // subtitlu cu ziua inventarului
+  const dayLabel=$("inv-day-label");
+  if(dayLabel){
+    const cats=Object.keys(PRODUCTS).filter(catActiveToday);
+    const allCats=Object.keys(PRODUCTS);
+    if(cats.length<allCats.length)
+      dayLabel.textContent="Azi: "+cats.join(", ");
+    else
+      dayLabel.textContent="";
+  }
   Object.entries(PRODUCTS).forEach(([cat,items],ci)=>{
+    const active=catActiveToday(cat);
     const matches=items.map((it,ii)=>({it,ii})).filter(o=>!term||o.it.toLowerCase().includes(term));
-    items.forEach((_,ii)=>{total++;const k=ci+"_"+ii;if(S.inv[k]!==undefined&&S.inv[k]!=="")counted++;});
+    if(active){items.forEach((_,ii)=>{total++;const k=ci+"_"+ii;if(S.inv[k]!==undefined&&S.inv[k]!=="")counted++;});}
+    if(!active&&!term)return;        // ascunde categoria dacă nu e ziua ei (afară de căutare)
     if(term&&!matches.length)return;
     const open=term?true:!!invExpanded[ci]||ci===0&&!Object.keys(invExpanded).length;
     const acc=document.createElement("div");acc.className="acc";
+    if(!active)acc.style.opacity="0.4"; // în căutare apare estompat
     let cc=0;items.forEach((_,ii)=>{const k=ci+"_"+ii;if(S.inv[k]!==undefined&&S.inv[k]!=="")cc++;});
     const head=document.createElement("div");head.className="acc-head";
     head.innerHTML='<span style="font-weight:500">'+cat+'</span><span class="muted">'+cc+"/"+items.length+(open?" ▲":" ▼")+'</span>';
@@ -778,8 +823,8 @@ function renderInventory(){
   $("inv-prog").textContent=counted+"/"+total;
   gateFor("s-inv");
 }
-function updateInvProg(){let total=0,counted=0;Object.entries(PRODUCTS).forEach(([cat,items],ci)=>{items.forEach((_,ii)=>{total++;const k=ci+"_"+ii;if(S.inv[k]!==undefined&&S.inv[k]!=="")counted++;});});$("inv-prog").textContent=counted+"/"+total;gateFor("s-inv");}
-function invDone(){let total=0,counted=0;Object.entries(PRODUCTS).forEach(([c,items],ci)=>{items.forEach((_,ii)=>{total++;const k=ci+"_"+ii;if(S.inv[k]!==undefined&&S.inv[k]!=="")counted++;});});return total>0&&counted===total;}
+function updateInvProg(){let total=0,counted=0;Object.entries(PRODUCTS).forEach(([cat,items],ci)=>{if(!catActiveToday(cat))return;items.forEach((_,ii)=>{total++;const k=ci+"_"+ii;if(S.inv[k]!==undefined&&S.inv[k]!=="")counted++;});});$("inv-prog").textContent=counted+"/"+total;gateFor("s-inv");}
+function invDone(){let total=0,counted=0;Object.entries(PRODUCTS).forEach(([cat,items],ci)=>{if(!catActiveToday(cat))return;items.forEach((_,ii)=>{total++;const k=ci+"_"+ii;if(S.inv[k]!==undefined&&S.inv[k]!=="")counted++;});});return total>0&&counted===total;}
 
 /* ============================================================
    6. CONSUM & PIERDERI
