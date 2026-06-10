@@ -478,7 +478,7 @@ function load(){
   return { date:todayKey(), team:[], morning:{}, day:{}, inv:{}, loss:{consum:[{p:"",c:""}],pahare:[{t:"",n:""}],alte:[{d:"",c:""}]},
            cash:{}, final:{}, receptii:[], remLog:[], started:false, closed:false, phase:"" };
 }
-function save(){try{localStorage.setItem("send_"+todayKey(),JSON.stringify(S));}catch(e){}
+function save(){try{localStorage.setItem("send_"+S.date,JSON.stringify(S));}catch(e){}
   if(CONFIG.BACKEND_URL) backend("autosave",{state:S}); }
 
 let PRODUCTS = PRODUCTS_FALLBACK;
