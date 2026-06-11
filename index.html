@@ -568,7 +568,7 @@ function show(id){
 function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1800);}
 function num(v){const n=parseFloat(v);return isNaN(n)?0:n;}
 function fmt(n){return n.toLocaleString("ro-RO",{minimumFractionDigits:2,maximumFractionDigits:2})+" RON";}
-function beep(){try{const a=new(window.AudioContext||window.webkitAudioContext)();const o=a.createOscillator();const g=a.createGain();o.connect(g);g.connect(a.destination);o.frequency.value=880;g.gain.value=.2;o.start();setTimeout(()=>{o.stop();a.close();},500);}catch(e){}}
+function beep(){try{const a=new(window.AudioContext||window.webkitAudioContext)();function tone(f,t0,dur){const o=a.createOscillator();const g=a.createGain();o.connect(g);g.connect(a.destination);o.frequency.value=f;g.gain.setValueAtTime(0,a.currentTime+t0);g.gain.linearRampToValueAtTime(1,a.currentTime+t0+.02);g.gain.setValueAtTime(1,a.currentTime+t0+dur-.04);g.gain.linearRampToValueAtTime(0,a.currentTime+t0+dur);o.start(a.currentTime+t0);o.stop(a.currentTime+t0+dur+.01);}tone(880,0,.18);tone(880,.25,.18);tone(1047,.5,.28);setTimeout(()=>a.close(),1000);}catch(e){}}
 
 /* clock */
 function tick(){const d=new Date();$("clk-t").textContent=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
@@ -987,7 +987,10 @@ function startReminders(){ if(remTimer)return;
     if(!remQueue.some(q=>q.id===r.id))remQueue.push(r);
   });
   if(cleaned)save();
-  remTimer=setInterval(remCheck,30000); remCheck(); }
+  remTimer=setInterval(remCheck,30000);
+  // arată imediat primul reminder nerezolvat fără să aștepte remCheck
+  if(!remActive&&remQueue.length) showReminder(remQueue.shift());
+  else remCheck(); }
 function hm(d){return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");}
 function remCheck(){
   const d=new Date(),now=hm(d),dow=d.getDay(),h=d.getHours(),m=d.getMinutes();
