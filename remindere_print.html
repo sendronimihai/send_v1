@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SEND — Remindere (listă printabilă)</title>
+<style>
+  body{font-family:Georgia,"Times New Roman",serif;color:#1c1a17;margin:24px auto;max-width:800px;padding:0 16px;font-size:14px;line-height:1.45}
+  h1{font-size:24px;margin:0 0 2px;letter-spacing:.5px}
+  .sub{color:#666;font-size:12px;margin:0 0 22px}
+  h2{font-size:17px;margin:26px 0 8px;border-bottom:2px solid #1c1a17;padding-bottom:4px}
+  table{width:100%;border-collapse:collapse;margin-bottom:8px}
+  th,td{border:1px solid #999;padding:6px 8px;text-align:left;vertical-align:top}
+  th{background:#f0ece3;font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+  td.time{white-space:nowrap;font-weight:bold;width:1%}
+  td.zone{white-space:nowrap;width:1%}
+  .note{font-size:12px;color:#555;margin:4px 0 0}
+  .badge{display:inline-block;font-size:11px;border:1px solid #999;border-radius:8px;padding:1px 7px;margin-left:6px;color:#555}
+  .printbtn{position:fixed;top:14px;right:14px;background:#e0a458;border:none;border-radius:8px;padding:10px 18px;font-size:15px;font-weight:bold;cursor:pointer;font-family:inherit}
+  @media print{
+    .printbtn{display:none}
+    body{margin:0;font-size:12px}
+    h2{page-break-after:avoid}
+    table{page-break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+<button class="printbtn" onclick="window.print()">🖨 Printează</button>
+
+<h1>SEND — Remindere</h1>
+<p class="sub">Lista completă a reminderelor din aplicație · zonele indică cine răspunde</p>
+
+<h2>1. Remindere zilnice — sarcini</h2>
+<table>
+  <tr><th>Ora</th><th>Sarcină</th><th>Zona</th></tr>
+  <tr><td class="time">09:00</td><td>Pornește muzica</td><td class="zone">Bar</td></tr>
+  <tr><td class="time">09:00</td><td>Etichetare și rotație FIFO produse desfăcute la bar</td><td class="zone">Bar</td></tr>
+  <tr><td class="time">09:45</td><td>Cross-check bar</td><td class="zone">Bar</td></tr>
+  <tr><td class="time">11:00 · 17:00</td><td>Verifică frigiderele</td><td class="zone">Bar + Bucătărie</td></tr>
+  <tr><td class="time">15:00</td><td>Verificare stoc prânz: suc lămâie, felii lămâie + mentă, cafea ice coffee, lime, matcha, ceai Galaxy</td><td class="zone">Bar</td></tr>
+  <tr><td class="time">22:00</td><td>Pune POS-ul, telefonul și tableta la încărcat</td><td class="zone">Toți</td></tr>
+  <tr><td class="time">23:00</td><td>Începe curățenia de seară</td><td class="zone">Toți</td></tr>
+</table>
+
+<h2>2. Verificări periodice</h2>
+<table>
+  <tr><th>Ora</th><th>Verificare</th><th>Zona</th></tr>
+  <tr><td class="time">09:00 · 12:00 · 14:00 · 17:00 · 18:00 · 19:00 · 21:00 · 22:30</td><td>Verifică toaletele</td><td class="zone">Sală</td></tr>
+  <tr><td class="time">12:00 · 17:00 · 22:30</td><td>Verificare curățenie — cu <strong>poze</strong> (bar, bucătărie, terasă, interior, baie)</td><td class="zone">Toți</td></tr>
+</table>
+
+<h2>3. Întrebări de control (Da/Nu)</h2>
+<table>
+  <tr><th>Frecvența</th><th>Întrebare</th><th>Zona</th></tr>
+  <tr><td class="time">din oră în oră, 09:00–22:30</td><td>Avem personal unde sunt clienții?</td><td class="zone">Toți</td></tr>
+  <tr><td class="time">din oră în oră, 08:00–24:00</td><td>A stat cineva pe telefon cât au fost mese ocupate?</td><td class="zone">Toți</td></tr>
+  <tr><td class="time">din 20 în 20 min, 09:00–22:40</td><td>Tot ok?</td><td class="zone">Toți</td></tr>
+</table>
+
+<h2>4. Curățenia săptămânală <span class="badge">cine a făcut + cine a verificat (Samir / Bishma / Cipri)</span></h2>
+<table>
+  <tr><th>Ziua</th><th>Sarcină</th></tr>
+  <tr><td class="time">Luni</td><td>Pompițele de sirop, frigiderele, bar, barmat pahare (geamuri + interior + măturat/spălat)</td></tr>
+  <tr><td class="time">Marți</td><td>Rafturi pahare/alcool, geamuri</td></tr>
+  <tr><td class="time">Miercuri</td><td>Aranjare magazie + vestiar</td></tr>
+  <tr><td class="time">Joi</td><td>Oglinzi, plante</td></tr>
+  <tr><td class="time">Vineri</td><td>Pompițele de sirop, espressor, ceștile de cafea</td></tr>
+  <tr><td class="time">Sâmbătă</td><td>Pahare de sticlă, rafturi pahare (curățat praf)</td></tr>
+  <tr><td class="time">Duminică</td><td>Măturat + spălat sub mese &amp; canapele</td></tr>
+</table>
+<p class="note">Reminderul apare la 10:00 și revine la 12:00, 14:00, 16:00, 18:00, 20:00 până e confirmat. Verificatorul trebuie să fie altă persoană decât cel care a făcut.</p>
+
+<h2>5. Doar vinerea (karaoke)</h2>
+<table>
+  <tr><th>Ora</th><th>Sarcină</th><th>Zona</th></tr>
+  <tr><td class="time">10:00</td><td>Pune microfoanele la încărcat</td><td class="zone">Bar</td></tr>
+  <tr><td class="time">11:00</td><td>Pregătire karaoke</td><td class="zone">Toți</td></tr>
+</table>
+
+<h2>6. Închiderea zilei</h2>
+<table>
+  <tr><th>Ora</th><th>Ce se întâmplă</th></tr>
+  <tr><td class="time">22:00</td><td>Se deschide fereastra de închidere: Inventar → Consum &amp; pierderi → Casă (Z + sold) → Checklist final</td></tr>
+  <tr><td class="time">23:50–23:56</td><td>Reminder „Închide tura" din 2 în 2 minute, dacă tura nu e închisă</td></tr>
+  <tr><td class="time">23:58</td><td>Raportul pe email pleacă <strong>automat</strong>, chiar dacă nu s-a apăsat „Închide tura"</td></tr>
+</table>
+
+</body>
+</html>
