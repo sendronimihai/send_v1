@@ -525,9 +525,9 @@ const FINAL_ITEMS=["Este curat în baie?","Este bucătăria curată?","Este cura
 function todayKey(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
 let S = load();
 function load(){
-  try{const raw=localStorage.getItem("send_"+todayKey());if(raw){const s=JSON.parse(raw);if(!s.remDone)s.remDone={};return s;}}catch(e){}
+  try{const raw=localStorage.getItem("send_"+todayKey());if(raw){const s=JSON.parse(raw);if(!s.remDone)s.remDone={};if(!s.remPending)s.remPending={};return s;}}catch(e){}
   return { date:todayKey(), team:[], morning:{}, day:{}, inv:{}, loss:{consum:[{p:"",c:""}],pahare:[{t:"",n:""}],alte:[{d:"",c:""}]},
-           cash:{}, final:{}, receptii:[], remLog:[], remDone:{}, started:false, closed:false, phase:"" };
+           cash:{}, final:{}, receptii:[], remLog:[], remDone:{}, remPending:{}, started:false, closed:false, phase:"" };
 }
 function save(){try{localStorage.setItem("send_"+S.date,JSON.stringify(S));}catch(e){}
   if(CONFIG.BACKEND_URL) backend("autosave",{state:S}); }
@@ -978,6 +978,15 @@ function startReminders(){ if(remTimer)return;
   const dow=new Date().getDay();
   const wt=REM.find(r=>r.type==="verify"&&r.active!==false&&(!r.days||r.days.includes(dow)));
   if(wt&&S.weeklyTask!==wt.t){S.weeklyTask=wt.t;save();}
+  // reminderele fără răspuns (rămase din sesiunea precedentă / refresh) reapar
+  let cleaned=false;
+  Object.entries(S.remPending).forEach(([key,p])=>{
+    const r=REM.find(x=>x.id===p.id);
+    if(!r||r.active===false||(r.type==="verify"&&S.remDone[r.id])){delete S.remPending[key];cleaned=true;return;}
+    remFired[key]=true;
+    if(!remQueue.some(q=>q.id===r.id))remQueue.push(r);
+  });
+  if(cleaned)save();
   remTimer=setInterval(remCheck,30000); remCheck(); }
 function hm(d){return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");}
 function remCheck(){
@@ -990,7 +999,9 @@ function remCheck(){
     if(r.times&&r.times.includes(now))fire=true;
     if(r.interval&&h>=r.from&&h<r.to&&(h*60+m)%r.interval===0)fire=true;
     const key=r.id+"_"+now;
-    if(fire&&!remFired[key]){remFired[key]=true;remQueue.push(r);}
+    if(fire&&!remFired[key]){remFired[key]=true;
+      S.remPending[key]={id:r.id,time:now};save();  // persistă — la refresh reapare
+      remQueue.push(r);}
   });
   closingWindowCheck(d);
   if(!remActive&&remQueue.length)showReminder(remQueue.shift());
@@ -1016,7 +1027,8 @@ function showReminder(r){
   $("rem-title").textContent=r.t;
   $("rem-zone").textContent=r.zone;
   const act=$("rem-actions");act.innerHTML="";
-  function done(resp,extra){ S.remLog.push(Object.assign({id:r.id,t:r.t,resp,time:hm(new Date())},extra||{})); save();
+  function done(resp,extra){ S.remLog.push(Object.assign({id:r.id,t:r.t,resp,time:hm(new Date())},extra||{}));
+    Object.keys(S.remPending).forEach(k=>{if(S.remPending[k].id===r.id)delete S.remPending[k];}); save();
     backend("saveReminder",Object.assign({id:r.id,resp,time:hm(new Date())},extra||{}));
     $("rem-overlay").classList.remove("show");remActive=false;
     if(remQueue.length)setTimeout(()=>showReminder(remQueue.shift()),400); }
