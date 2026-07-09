@@ -142,6 +142,14 @@ function sendShiftEmail(state) {
 
   html.push("<h3>Echipă</h3><p>" + (s.team || []).map(function (t) { return t.name + " (" + t.zone + ")"; }).join(", ") + "</p>");
 
+  // progres sarcini zilnice — complete = bifate + cel puțin o poză
+  if (s.progress && s.progress.total) {
+    var pc = s.progress.pct;
+    var col = pc >= 100 ? "#2e7d32" : (pc >= 50 ? "#c98a00" : "#b54");
+    html.push("<h3>Progres sarcini zilnice</h3><p style='color:" + col + ";font-size:16px'><b>" + pc + "%</b> — " +
+      s.progress.done + "/" + s.progress.total + " sarcini complete (bifate + poză)</p>");
+  }
+
   // pregătire dimineață — cine a făcut / cine a verificat
   if (s.morning) {
     var secName = { barsala: "Bar/Terasă/Sală", bucatarie: "Bucătărie" };
@@ -248,7 +256,7 @@ function sendShiftEmail(state) {
     html.push("<h3>Checklist final</h3><ul>");
     Object.keys(s.final).forEach(function (i) {
       var f = s.final[i];
-      html.push("<li>" + (f.facut ? "Făcut: " + f.facut + " · Verificat: " + f.verif : "—") + (f.photo ? " · 📷" : "") + "</li>");
+      html.push("<li>" + (f.facut ? "Făcut: " + f.facut + " · Verificat: " + f.verif : "—") + (f.photos ? " · 📷×" + f.photos : (f.photo ? " · 📷" : "")) + "</li>");
     });
     html.push("</ul>");
   }

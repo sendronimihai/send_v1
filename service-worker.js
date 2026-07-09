@@ -1,5 +1,5 @@
 /* SEND service worker — cache app shell pentru funcționare offline */
-const CACHE = "send-v2";
+const CACHE = "send-v3";
 const ASSETS = ["index.html","manifest.json","icon.svg"];
 
 self.addEventListener("install", e => {
