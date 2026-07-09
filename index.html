@@ -774,7 +774,7 @@ const CLOSING_SCREENS=["s-inv","s-loss","s-cash","s-final","s-admin"];
 function lockedToClosing(){return new Date().getHours()>=22&&S.started&&!S.closed;}
 function show(id){
   if(lockedToClosing()&&!CLOSING_SCREENS.includes(id)){
-    closingFlow=true;renderInventory();id="s-inv";
+    renderLoss();id="s-loss";
     toast(t("După 22:00 e disponibilă doar închiderea de zi."));
   }
   document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
@@ -1063,7 +1063,6 @@ function renderInventory(){
   gateFor("s-inv");
 }
 function updateInvProg(){let total=0,counted=0;Object.entries(PRODUCTS).forEach(([cat,items],ci)=>{if(!catActiveToday(cat))return;items.forEach((_,ii)=>{total++;const k=ci+"_"+ii;if(S.inv[k]!==undefined&&S.inv[k]!=="")counted++;});});$("inv-prog").textContent=counted+"/"+total;gateFor("s-inv");}
-function invDone(){let total=0,counted=0;Object.entries(PRODUCTS).forEach(([cat,items],ci)=>{if(!catActiveToday(cat))return;items.forEach((_,ii)=>{total++;const k=ci+"_"+ii;if(S.inv[k]!==undefined&&S.inv[k]!=="")counted++;});});return total>0&&counted===total;}
 
 /* ============================================================
    6. CONSUM & PIERDERI
@@ -1153,9 +1152,7 @@ function gateFor(id){
   const map={
     "s-staff":{ok:()=>S? Object.values(staffState).some(s=>s.on&&s.zone):false, lock:t("Selectează cine lucrează și zona."), open:t("Gata — pornește."), label:t("Continuă")},
     "s-morning":{ok:morningDone, lock:t("Bifează tot și alege cine a făcut + cine a verificat."), open:t("Totul bifat și verificat — poți începe."), label:t("Începe tura")},
-    "s-inv":closingFlow
-      ?{ok:invDone, lock:t("Numără tot inventarul."), open:t("Inventar complet."), label:t("Continuă")}
-      :{ok:()=>true, lock:"", open:t("Progresul se salvează automat."), label:t("← Înapoi")},
+    "s-inv":{ok:()=>true, lock:"", open:t("Progresul se salvează automat."), label:t("← Înapoi")},
     "s-loss":{ok:lossDone, lock:"", open:t("Completat."), label:t("Continuă")},
     "s-cash":{ok:cashDone, lock:t("Completează raportul Z și soldul precedent."), open:t("Casă reconciliată."), label:t("Continuă")},
     "s-final":{ok:finalDone, lock:t("Completează tot, verificat în doi."), open:t("Verificat în doi — închide tura."), label:t("Trimite & închide")}
@@ -1179,8 +1176,7 @@ function gateAction(){
     S.started=true;save();backend("saveMorning",{morning:S.morning});
     renderDash();renderDay();show("s-dash");startReminders();
   }
-  else if(id==="s-inv"){ buildOrderList(); backend("saveInventory",{inv:S.inv,order:S.order});
-    if(closingFlow){ renderLoss();show("s-loss"); } else { show("s-dash"); } }
+  else if(id==="s-inv"){ buildOrderList(); backend("saveInventory",{inv:S.inv,order:S.order}); show("s-dash"); }
   else if(id==="s-loss"){ backend("saveLosses",{loss:S.loss}); show("s-cash");calcCash(); }
   else if(id==="s-cash"){ backend("saveCash",{cash:S.cash}); renderFinal();show("s-final"); }
   else if(id==="s-final"){ closeShift(); }
@@ -1189,17 +1185,13 @@ function gateAction(){
 /* ============================================================
    ÎNCHIDERE TURĂ
    ============================================================ */
-let closingFlow=false;
 function startClosing(){
   const h=new Date().getHours();
   if(h<22){toast(t("Închiderea e disponibilă de la 22:00"));return;}
-  closingFlow=true;
-  renderInventory();show("s-inv");
+  renderLoss();show("s-loss");
 }
-/* stocurile se pot completa oricând în timpul zilei, din dashboard */
+/* stocurile se pot completa oricând, din dashboard — nu mai fac parte din închidere */
 function openInventory(){
-  if(lockedToClosing()){startClosing();return;}
-  closingFlow=false;
   renderInventory();show("s-inv");
 }
 async function closeShift(){
