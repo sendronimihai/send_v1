@@ -528,8 +528,6 @@ const EN = {
   "Tură închisă azi":"Shift closed today","Raportul a fost trimis.":"The report has been sent.",
   "Tura închisă · raport trimis":"Shift closed · report sent",
   /* închidere / restricție 22:00 */
-  "Închiderea e disponibilă de la 22:00":"Closing is available from 22:00",
-  "După 22:00 e disponibilă doar închiderea de zi.":"After 22:00 only the day closing is available.",
   "Raport trimis automat (23:58)":"Report sent automatically (23:58)",
   "Închide tura — raportul pleacă la 23:58!":"Close the shift — the report goes out at 23:58!",
   /* remindere pop-up */
@@ -771,14 +769,7 @@ function buildOrderList(){
    UTIL
    ============================================================ */
 function $(id){return document.getElementById(id);}
-/* după 22:00, cu tura pornită, e disponibilă doar închiderea de zi */
-const CLOSING_SCREENS=["s-inv","s-loss","s-cash","s-final","s-admin"];
-function lockedToClosing(){return new Date().getHours()>=22&&S.started&&!S.closed;}
 function show(id){
-  if(lockedToClosing()&&!CLOSING_SCREENS.includes(id)){
-    renderLoss();id="s-loss";
-    toast(t("După 22:00 e disponibilă doar închiderea de zi."));
-  }
   document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
   $(id).classList.add("active");
   const dashArea=["s-dash","s-day"].includes(id);
@@ -795,10 +786,7 @@ function beep(){try{const a=new(window.AudioContext||window.webkitAudioContext)(
 /* clock */
 function tick(){const d=new Date();$("clk-t").textContent=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
   $("clk-d").textContent=d.toLocaleDateString(LANG==="en"?"en-GB":"ro-RO",{weekday:"long",day:"numeric",month:"long"});
-  if(S.date&&S.date!==todayKey()){location.reload();}
-  // la 22:00 aplicația trece automat pe fluxul de închidere
-  if(lockedToClosing()){const act=document.querySelector(".screen.active");
-    if(act&&!CLOSING_SCREENS.includes(act.id))show(act.id);}}
+  if(S.date&&S.date!==todayKey()){location.reload();}}
 setInterval(tick,1000);tick();
 
 /* ============================================================
@@ -1187,9 +1175,8 @@ function gateAction(){
 /* ============================================================
    ÎNCHIDERE TURĂ
    ============================================================ */
+/* închiderea poate fi începută oricând */
 function startClosing(){
-  const h=new Date().getHours();
-  if(h<22){toast(t("Închiderea e disponibilă de la 22:00"));return;}
   renderLoss();show("s-loss");
 }
 /* stocurile se pot completa oricând, din dashboard — nu mai fac parte din închidere */
@@ -1239,7 +1226,7 @@ function remCheck(){
     if(r.interval&&h>=r.from&&h<r.to&&(h*60+m)%r.interval===0)fire=true;
     const key=r.id+"_"+now;
     if(fire&&!remFired[key]){remFired[key]=true;
-      S.remPending[key]={id:r.id,time:now};save();  // persistă — la refresh reapare
+      S.remPending[key]={id:r.id,t:r.t,time:now};save();  // persistă — la refresh reapare; textul intră în raportul de seară
       remQueue.push(r);}
   });
   closingWindowCheck(d);

@@ -181,6 +181,18 @@ function sendShiftEmail(state) {
     html.push("</ul>");
   }
 
+  // pop-up-uri fără răspuns — apărute pe tabletă, dar la care nu s-a apăsat niciun buton
+  var pend = [];
+  if (s.remPending) Object.keys(s.remPending).forEach(function (k) { pend.push(s.remPending[k]); });
+  if (pend.length) {
+    pend.sort(function (a, b) { return String(a.time || "").localeCompare(String(b.time || "")); });
+    html.push("<h3 style='color:#b54'>Pop-up-uri fără răspuns: " + pend.length + "</h3><ul>");
+    pend.forEach(function (p) { html.push("<li>" + (p.time || "—") + " — " + (p.t || p.id) + "</li>"); });
+    html.push("</ul>");
+  } else {
+    html.push("<h3>Pop-up-uri fără răspuns: 0</h3><p>Toate reminderele au primit răspuns. ✓</p>");
+  }
+
   // casă
   if (s.cash) {
     var c = s.cash;

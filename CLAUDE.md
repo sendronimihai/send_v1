@@ -31,7 +31,7 @@ SEND_Specificatie_Aplicatie.md → specificația completă
 - Backend-ul răspunde JSON; frontend-ul tolerează lipsa lui (merge și local).
 
 ## Reguli importante (nu le strica)
-- **Porți (gates):** tura nu pornește până nu e bifat checklist-ul de dimineață. Închiderea (de la 22:00) trece obligatoriu prin: Consum & pierderi → Casă (Z+sold) → Checklist final. Stocurile/inventarul se completează liber, oricând, din dashboard (după 22:00 doar fluxul de închidere e accesibil).
+- **Porți (gates):** tura nu pornește până nu e bifat checklist-ul de dimineață. Închiderea (accesibilă oricând) trece obligatoriu prin: Consum & pierderi → Casă (Z+sold) → Checklist final. Stocurile/inventarul se completează liber, oricând, din dashboard. Toate paginile rămân accesibile la orice oră (fără restricție după 22:00).
 - **Checklist final:** „cine a verificat" trebuie să fie altă persoană decât „cine a făcut" (impus).
 - **Email:** la „Închide tura" pleacă pe loc; altfel reminder din 2 în 2 min 23:50–23:56; trimitere automată la 23:58.
 - **Casă:** Total Z = cash + card + ia loc; Valoare cash = sold precedent + Z cash; Sold final = valoare cash − plăți cash. Soldul NU se preia automat a doua zi.
