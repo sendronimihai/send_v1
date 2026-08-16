@@ -79,8 +79,8 @@ const CONFIG = {
 1. **Deschizi app** → alegi cine lucrează + zona fiecăruia → *Continuă*.
 2. **Checklist de dimineață** → tura nu pornește până nu e bifat tot → *Începe tura*.
 3. **Dashboard** toată ziua; reminderele apar singure ca pop-up; *Pagina zilei* are taskurile zilei.
-4. **De la 22:00** apeși *Închide tura* → trece prin porți: **Inventar → Consum & pierderi → Casă (Z + sold) → Checklist final** → trimite raportul.
-5. Dacă nu s-a apăsat, între **23:50 și 23:56** sună din 2 în 2 min, iar la **23:58** raportul pleacă automat.
+4. Oricând apeși *Închide tura* → trece prin porți: **Consum & pierderi → Casă (Z + sold) → Checklist final** → trimite raportul. Stocurile/inventarul se completează liber, din dashboard.
+5. Dacă tura nu e închisă, între **23:50 și 23:56** sună un reminder din 2 în 2 min. Raportul pleacă **doar la apăsarea butonului** — nu există trimitere automată.
 
 ---
 

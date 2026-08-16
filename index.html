@@ -528,8 +528,7 @@ const EN = {
   "Tură închisă azi":"Shift closed today","Raportul a fost trimis.":"The report has been sent.",
   "Tura închisă · raport trimis":"Shift closed · report sent",
   /* închidere / restricție 22:00 */
-  "Raport trimis automat (23:58)":"Report sent automatically (23:58)",
-  "Închide tura — raportul pleacă la 23:58!":"Close the shift — the report goes out at 23:58!",
+  "Nu uita să închizi tura!":"Don't forget to close the shift!",
   /* remindere pop-up */
   "Mai târziu":"Later","Confirmă":"Confirm","Amână 10 min":"Snooze 10 min","Am făcut":"Done","Gata":"Done",
   "Fă poze pentru fiecare zonă:":"Take photos for each area:",
@@ -1232,19 +1231,16 @@ function remCheck(){
   closingWindowCheck(d);
   if(!remActive&&remQueue.length)showReminder(remQueue.shift());
 }
-let emailSent=false;
 function closingWindowCheck(d){
   if(S.closed)return;
   const now=hm(d);
-  // reminder „închide tura" din 2 în 2 min între 23:50 și 23:56
+  // reminder „închide tura" din 2 în 2 min între 23:50 și 23:56 — doar avertizare;
+  // tura se închide și emailul pleacă DOAR la apăsarea butonului
   if(["23:50","23:52","23:54","23:56"].includes(now)){
     const key="close_"+now;
     if(!remFired[key]){remFired[key]=true;
-      remQueue.push({id:"close",t:"Închide tura — raportul pleacă la 23:58!",type:"done",zone:"Toți",sound:true});}
+      remQueue.push({id:"close",t:"Nu uita să închizi tura!",type:"done",zone:"Toți",sound:true});}
   }
-  // trimitere automată la 23:58, chiar dacă nu s-a apăsat
-  if(now==="23:58"&&!emailSent){emailSent=true;S._emailSent=true;buildOrderList();save();
-    backend("sendEmail",{state:S});toast(t("Raport trimis automat (23:58)"));}
 }
 function showReminder(r){
   remActive=true;

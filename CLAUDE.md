@@ -33,7 +33,7 @@ SEND_Specificatie_Aplicatie.md → specificația completă
 ## Reguli importante (nu le strica)
 - **Porți (gates):** tura nu pornește până nu e bifat checklist-ul de dimineață. Închiderea (accesibilă oricând) trece obligatoriu prin: Consum & pierderi → Casă (Z+sold) → Checklist final. Stocurile/inventarul se completează liber, oricând, din dashboard. Toate paginile rămân accesibile la orice oră (fără restricție după 22:00).
 - **Checklist final:** „cine a verificat" trebuie să fie altă persoană decât „cine a făcut" (impus).
-- **Email:** la „Închide tura" pleacă pe loc; altfel reminder din 2 în 2 min 23:50–23:56; trimitere automată la 23:58.
+- **Email:** pleacă DOAR la apăsarea butonului „Închide tura", indiferent de oră. Fără trimitere automată. Reminder de avertizare din 2 în 2 min 23:50–23:56 dacă tura nu e închisă.
 - **Casă:** Total Z = cash + card + ia loc; Valoare cash = sold precedent + Z cash; Sold final = valoare cash − plăți cash. Soldul NU se preia automat a doua zi.
 - **Poze:** structură Drive `Poze/[Categorie]/[Data]/[Fereastra]/`.
 - Lista de produse vine din Sheet (col A = Categorie, col B = Produs); editarea Sheet-ului actualizează aplicația.

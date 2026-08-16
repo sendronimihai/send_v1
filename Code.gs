@@ -295,26 +295,14 @@ function todayStr() {
 }
 function pad(n) { return String(n).padStart(2, "0"); }
 
-/* ---------- Plasă de siguranță: email automat la final de zi ----------
- * Rulează o dată, manual: setupTriggers().
- * Notă: declanșatorul orar Apps Script nu e precis la minut; trimiterea
- * exactă de la 23:58 e condusă de aplicație (PWA). Acesta e doar backup.
+/* ---------- Fără trimitere automată ----------
+ * Emailul pleacă DOAR la apăsarea butonului „Închide tura" din aplicație.
+ * Dacă în trecut ai rulat setupTriggers() (vechea plasă de siguranță de la
+ * ora 23), rulează O DATĂ funcția removeAutoEmailTriggers() din editor
+ * (selecteaz-o sus și apasă Run) ca să ștergi declanșatorul vechi.
  */
-function setupTriggers() {
+function removeAutoEmailTriggers() {
   ScriptApp.getProjectTriggers().forEach(function (t) {
     if (t.getHandlerFunction() === "autoCloseEmail") ScriptApp.deleteTrigger(t);
   });
-  ScriptApp.newTrigger("autoCloseEmail").timeBased().atHour(23).everyDays(1).create();
-}
-function autoCloseEmail() {
-  // dacă există stare salvată azi și nu a fost închisă, trimite oricum
-  var f = getFolder(root(), "Stare zilnică");
-  var it = f.getFilesByName(todayStr() + ".json");
-  if (!it.hasNext()) return;
-  var state = JSON.parse(it.next().getBlob().getDataAsString());
-  if (state && !state._emailSent) {
-    sendShiftEmail(state);
-    state._emailSent = true;
-    saveState(todayStr(), state);
-  }
 }
