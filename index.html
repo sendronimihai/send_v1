@@ -710,9 +710,24 @@ const FINAL_ITEMS=["Este curat în baie?","Este bucătăria curată?","Este cura
    STARE (localStorage, pe zi)
    ============================================================ */
 function todayKey(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+let closingInProgress=false; // blochează trecerea pe ziua nouă cât timp se trimite raportul
 let S = load();
 function load(){
-  try{const raw=localStorage.getItem("send_"+todayKey());if(raw){const s=JSON.parse(raw);if(!s.remDone)s.remDone={};if(!s.remPending)s.remPending={};return s;}}catch(e){}
+  // ziua NU se schimbă automat la miezul nopții: tura deschisă (send_active_day)
+  // continuă până se apasă „Închide tura"; abia apoi începe o zi nouă
+  try{
+    const act=localStorage.getItem("send_active_day");
+    const key=act||todayKey();
+    const raw=localStorage.getItem("send_"+key);
+    if(raw){
+      const s=JSON.parse(raw);
+      if(!s.remDone)s.remDone={};
+      if(!s.remPending)s.remPending={};
+      if(!s.closed){ try{localStorage.setItem("send_active_day",s.date);}catch(e){} return s; } // tura deschisă continuă, chiar și după miezul nopții
+      if(s.date===todayKey())return s;   // închisă azi — rămâne ecranul de confirmare până mâine
+    }
+  }catch(e){}
+  try{localStorage.setItem("send_active_day",todayKey());}catch(e){}
   return { date:todayKey(), team:[], morning:{}, day:{}, inv:{}, loss:{consum:[{p:"",c:""}],pahare:[{t:"",n:""}],alte:[{d:"",c:""}]},
            cash:{}, final:{}, receptii:[], remLog:[], remDone:{}, remPending:{}, started:false, closed:false, phase:"" };
 }
@@ -785,7 +800,8 @@ function beep(){try{const a=new(window.AudioContext||window.webkitAudioContext)(
 /* clock */
 function tick(){const d=new Date();$("clk-t").textContent=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
   $("clk-d").textContent=d.toLocaleDateString(LANG==="en"?"en-GB":"ro-RO",{weekday:"long",day:"numeric",month:"long"});
-  if(S.date&&S.date!==todayKey()){location.reload();}}
+  // trecerea pe ziua nouă se face DOAR după închiderea turei (nu la miezul nopții)
+  if(S.date&&S.date!==todayKey()&&S.closed&&!closingInProgress){location.reload();}}
 setInterval(tick,1000);tick();
 
 /* ============================================================
@@ -1183,9 +1199,12 @@ function openInventory(){
   renderInventory();show("s-inv");
 }
 async function closeShift(){
+  closingInProgress=true;
   S.closed=true;S.phase="closed";buildOrderList();save();
   await backend("saveFinal",{final:S.final});
   await backend("sendEmail",{state:S});
+  try{localStorage.removeItem("send_active_day");}catch(e){} // ziua următoare pornește curat
+  closingInProgress=false;
   toast(t("Tura închisă · raport trimis"));
   $("gate").style.display="none";$("nav").style.display="none";$("statusbar").style.display="none";
   setTimeout(()=>{$("s-final").innerHTML='<div style="text-align:center;padding:60px 20px"><div style="font-size:54px">✓</div><h2 class="title" style="margin-top:14px">'+t("Tură închisă")+'</h2><p class="sub">'+t("Raportul a fost trimis. Mulțumesc.")+'</p></div>';},400);
