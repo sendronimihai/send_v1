@@ -193,6 +193,16 @@ function sendShiftEmail(state) {
     html.push("<h3>Pop-up-uri fără răspuns: 0</h3><p>Toate reminderele au primit răspuns. ✓</p>");
   }
 
+  // mod „cafenea aglomerată" — remindere oprite manual de operator
+  if (s.busyLog && s.busyLog.length) {
+    html.push("<h3 style='color:#c98a00'>Cafenea aglomerată (remindere oprite): " + s.busyLog.length +
+      (s.busyLog.length === 1 ? " activare" : " activări") + "</h3><ul>");
+    s.busyLog.forEach(function (b) {
+      html.push("<li>" + (b.from || "—") + " – " + (b.to || "până la închiderea turei") + "</li>");
+    });
+    html.push("</ul>");
+  }
+
   // casă
   if (s.cash) {
     var c = s.cash;

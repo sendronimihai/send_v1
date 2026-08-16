@@ -226,6 +226,7 @@ label{font-size:14px;color:var(--ink-dim)}
       <h3 style="color:var(--bad);margin:0 0 8px">⚠ Urgent / Necesar azi</h3>
       <textarea id="urgent-field" placeholder="Scrie aici ce e urgent sau necesar pentru azi..." style="border-color:var(--bad)" oninput="S.urgent=this.value;save()"></textarea>
     </div>
+    <button id="busy-btn" onclick="toggleBusy()"></button>
     <button class="btn-ghost" style="width:100%;margin-bottom:8px" onclick="show('s-day')">Pagina zilei →</button>
     <button class="btn-ghost" style="width:100%;margin-bottom:8px" onclick="openInventory()">🧮 Stocuri / Inventar →</button>
     <button class="btn-ghost" style="width:100%;margin-bottom:14px" onclick="renderReceptie();show('s-receptie')">📦 Recepție marfă →</button>
@@ -553,6 +554,12 @@ const EN = {
   "Curățenie săptămânală: măturat + spălat sub mese & canapele":"Weekly cleaning: sweep + mop under tables & sofas",
   /* status bar */
   "sarcini complete (bifă + poze)":"tasks complete (check + photos)",
+  "aglomerat":"busy",
+  /* cafenea aglomerată */
+  "Cafenea aglomerată — ACTIV · reminderele sunt oprite":"Busy café — ON · reminders are paused",
+  "Cafenea aglomerată — apasă când echipa e ocupată cu servirea":"Busy café — tap when the team is busy serving",
+  "Remindere oprite — mod aglomerat activ":"Reminders paused — busy mode on",
+  "Remindere pornite din nou":"Reminders back on",
   /* PIN + admin */
   "Acces manager":"Manager access","Introdu codul PIN":"Enter the PIN code","Cod incorect.":"Wrong code.",
   "Anulează":"Cancel",
@@ -723,13 +730,14 @@ function load(){
       const s=JSON.parse(raw);
       if(!s.remDone)s.remDone={};
       if(!s.remPending)s.remPending={};
+      if(!s.busyLog)s.busyLog=[];
       if(!s.closed){ try{localStorage.setItem("send_active_day",s.date);}catch(e){} return s; } // tura deschisă continuă, chiar și după miezul nopții
       if(s.date===todayKey())return s;   // închisă azi — rămâne ecranul de confirmare până mâine
     }
   }catch(e){}
   try{localStorage.setItem("send_active_day",todayKey());}catch(e){}
   return { date:todayKey(), team:[], morning:{}, day:{}, inv:{}, loss:{consum:[{p:"",c:""}],pahare:[{t:"",n:""}],alte:[{d:"",c:""}]},
-           cash:{}, final:{}, receptii:[], remLog:[], remDone:{}, remPending:{}, started:false, closed:false, phase:"" };
+           cash:{}, final:{}, receptii:[], remLog:[], remDone:{}, remPending:{}, busy:false, busyLog:[], started:false, closed:false, phase:"" };
 }
 function save(){try{S.progress=dayProgress();}catch(e){}
   try{localStorage.setItem("send_"+S.date,JSON.stringify(S));}catch(e){}
@@ -756,7 +764,7 @@ function updateStatusBar(){
   const p=S.progress||dayProgress();
   $("sb-fill").style.width=p.pct+"%";
   $("sb-fill").style.background=p.pct>=100?"var(--ok)":(p.pct>=50?"var(--accent)":"var(--bad)");
-  $("sb-txt").textContent=p.pct+"% · "+p.done+"/"+p.total+" "+t("sarcini complete (bifă + poze)");
+  $("sb-txt").textContent=p.pct+"% · "+p.done+"/"+p.total+" "+t("sarcini complete (bifă + poze)")+(S.busy?" · 🔕 "+t("aglomerat"):"");
 }
 
 let PRODUCTS = PRODUCTS_FALLBACK;
@@ -917,6 +925,37 @@ function renderDash(){
   const pending=REM.filter(r=>r.active!==false).length;
   $("dash-rem").textContent="🔔 "+pending+" "+t("remindere active");
   const uf=$("urgent-field");if(uf)uf.value=S.urgent||"";
+  renderBusyBtn();
+}
+
+/* ============================================================
+   MOD „CAFENEA AGLOMERATĂ" — oprește reminderele cât echipa servește
+   ============================================================ */
+function renderBusyBtn(){
+  const b=$("busy-btn");if(!b)return;
+  if(S.busy){
+    b.textContent="🔕 "+t("Cafenea aglomerată — ACTIV · reminderele sunt oprite");
+    b.style.cssText="width:100%;margin-bottom:8px;background:var(--bad-bg);color:var(--bad);border:1px solid var(--bad);font-weight:600";
+  } else {
+    b.textContent="☕ "+t("Cafenea aglomerată — apasă când echipa e ocupată cu servirea");
+    b.style.cssText="width:100%;margin-bottom:8px;background:var(--surface-2);border:1px solid var(--line);color:var(--ink)";
+  }
+}
+function toggleBusy(){
+  if(!S.busyLog)S.busyLog=[];
+  S.busy=!S.busy;
+  if(S.busy){
+    S.busyLog.push({from:hm(new Date()),to:null});         // intervalul intră în raportul de seară
+    remQueue.length=0;                                      // anulează reminderele din coadă
+    Object.keys(S.remPending).forEach(k=>delete S.remPending[k]); // și pe cele nerezolvate de pe ecran
+    $("rem-overlay").classList.remove("show");remActive=false;
+    toast(t("Remindere oprite — mod aglomerat activ"));
+  } else {
+    const last=S.busyLog[S.busyLog.length-1];
+    if(last&&!last.to)last.to=hm(new Date());
+    toast(t("Remindere pornite din nou"));
+  }
+  save();renderBusyBtn();
 }
 
 /* ============================================================
@@ -1200,6 +1239,7 @@ function openInventory(){
 }
 async function closeShift(){
   closingInProgress=true;
+  if(S.busy){const last=(S.busyLog||[])[(S.busyLog||[]).length-1];if(last&&!last.to)last.to=hm(new Date());S.busy=false;}
   S.closed=true;S.phase="closed";buildOrderList();save();
   await backend("saveFinal",{final:S.final});
   await backend("sendEmail",{state:S});
@@ -1235,6 +1275,8 @@ function startReminders(){ if(remTimer)return;
 function hm(d){return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");}
 function remCheck(){
   const d=new Date(),now=hm(d),dow=d.getDay(),h=d.getHours(),m=d.getMinutes();
+  // mod „cafenea aglomerată": nu apare niciun reminder; avertizarea de închidere (23:50+) rămâne
+  if(S.busy){closingWindowCheck(d);if(!remActive&&remQueue.length)showReminder(remQueue.shift());return;}
   REM.forEach(r=>{
     if(r.active===false)return;
     if(r.days&&!r.days.includes(dow))return;
