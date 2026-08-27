@@ -719,28 +719,50 @@ const FINAL_ITEMS=["Este curat în baie?","Este bucătăria curată?","Este cura
 function todayKey(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
 let closingInProgress=false; // blochează trecerea pe ziua nouă cât timp se trimite raportul
 let S = load();
-function load(){
-  // ziua NU se schimbă automat la miezul nopții: tura deschisă (send_active_day)
-  // continuă până se apasă „Închide tura"; abia apoi începe o zi nouă
+function readState(key){
+  if(!key)return null;
+  try{const raw=localStorage.getItem("send_"+key);return raw?JSON.parse(raw):null;}catch(e){return null;}
+}
+/* plasă de siguranță: caută cea mai recentă tură DESCHISĂ din ultimele 2 zile,
+   pentru cazul în care pointerul send_active_day lipsește sau s-a pierdut
+   (ex. tură pornită pe o versiune veche a aplicației) */
+function findRecentOpenState(){
+  let best=null;
   try{
-    const act=localStorage.getItem("send_active_day");
-    const key=act||todayKey();
-    const raw=localStorage.getItem("send_"+key);
-    if(raw){
-      const s=JSON.parse(raw);
-      if(!s.remDone)s.remDone={};
-      if(!s.remPending)s.remPending={};
-      if(!s.busyLog)s.busyLog=[];
-      if(!s.closed){ try{localStorage.setItem("send_active_day",s.date);}catch(e){} return s; } // tura deschisă continuă, chiar și după miezul nopții
-      if(s.date===todayKey())return s;   // închisă azi — rămâne ecranul de confirmare până mâine
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      const m=k&&k.match(/^send_(\d{4}-\d{2}-\d{2})$/);
+      if(!m)continue;
+      const age=(Date.now()-new Date(m[1]+"T00:00:00").getTime())/86400000;
+      if(age<0||age>2)continue;                     // doar azi/ieri/alaltăieri
+      const s=readState(m[1]);
+      if(s&&!s.closed&&s.started&&(!best||s.date>best.date))best=s;
     }
   }catch(e){}
+  return best;
+}
+function load(){
+  // ziua NU se schimbă automat la miezul nopții sau la refresh:
+  // tura deschisă continuă până se apasă „Închide tura"; abia apoi începe o zi nouă
+  let s=readState(localStorage.getItem("send_active_day"));
+  if(s&&s.closed&&s.date!==todayKey())s=null;   // zi veche, deja închisă — nu se reia
+  if(!s)s=readState(todayKey());
+  if(!s)s=findRecentOpenState();                // pointer pierdut → caută tura deschisă
+  if(s){
+    if(!s.remDone)s.remDone={};
+    if(!s.remPending)s.remPending={};
+    if(!s.busyLog)s.busyLog=[];
+    if(!s.closed){ try{localStorage.setItem("send_active_day",s.date);}catch(e){} }
+    return s;
+  }
   try{localStorage.setItem("send_active_day",todayKey());}catch(e){}
   return { date:todayKey(), team:[], morning:{}, day:{}, inv:{}, loss:{consum:[{p:"",c:""}],pahare:[{t:"",n:""}],alte:[{d:"",c:""}]},
            cash:{}, final:{}, receptii:[], remLog:[], remDone:{}, remPending:{}, busy:false, busyLog:[], started:false, closed:false, phase:"" };
 }
 function save(){try{S.progress=dayProgress();}catch(e){}
-  try{localStorage.setItem("send_"+S.date,JSON.stringify(S));}catch(e){}
+  try{localStorage.setItem("send_"+S.date,JSON.stringify(S));
+    if(!S.closed)localStorage.setItem("send_active_day",S.date); // pointerul se reface la fiecare salvare
+  }catch(e){}
   if(CONFIG.BACKEND_URL) backend("autosave",{state:S});
   try{updateStatusBar();}catch(e){} }
 
