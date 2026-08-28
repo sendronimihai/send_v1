@@ -4,17 +4,36 @@
  * Sheets, urcă pozele în Drive pe structura de foldere și trimite
  * raportul pe email la final de tură.
  *
+ * ▼ Conține și modulul MANAGER (secțiunea de la finalul fișierului):
+ *   - aplicația de manager se deschide la:  URL_WEB_APP?page=app
+ *   - datele de manager stau în „SEND – Manager" (sheet-uri lunare)
+ *   - pozele merg în SEND/Bonusuri/[data] și SEND/Penalizari/[data]
+ *   - rulează O DATĂ setupManagerTriggers() ca să activezi crearea
+ *     automată a sheet-ului lunii următoare (cu o zi înainte de 1).
+ *
  * DEPLOY: vezi README.md (Extensions → Apps Script → Deploy → Web app).
  *****************************************************************/
 
 const CONFIG = {
   ROOT_FOLDER_NAME: "SEND",            // folderul rădăcină în Drive
   REPORT_EMAIL: "sendroni.mihai@gmail.com",   // destinatarul raportului
-  PRODUCTS_SHEET_ID: "1kz0Yy-vcJ6MYTqJgt9D3zMHNg84AQppFVTk6do-5Hj8"
+  PRODUCTS_SHEET_ID: "1kz0Yy-vcJ6MYTqJgt9D3zMHNg84AQppFVTk6do-5Hj8",
+  // ▼ Manager — numele scrise exact ca în aplicația angajaților
+  MANAGER_SPREADSHEET_NAME: "SEND – Manager",
+  TEAM_DEFAULT: ["Cipri", "Samir", "Bishma", "Asmita", "Ranjana", "Sushma", "Sujata"]
 };
 
 /* ---------- Router ---------- */
-function doGet() { return json({ ok: true, service: "SEND backend" }); }
+function doGet(e) {
+  // Aplicația de manager (HTML) se servește la ?page=app
+  if (e && e.parameter && e.parameter.page === "app") {
+    return HtmlService.createHtmlOutputFromFile("manager")
+      .setTitle("SEND · Manager")
+      .addMetaTag("viewport", "width=device-width, initial-scale=1, maximum-scale=1")
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+  return json({ ok: true, service: "SEND backend" });
+}
 
 function doPost(e) {
   var out = { ok: true };
@@ -44,7 +63,7 @@ function json(o) {
  */
 function getManagerPin() {
   var p = PropertiesService.getScriptProperties().getProperty("MANAGER_PIN");
-  return p || "1234";
+  return p || "2026";
 }
 
 /* ---------- Drive: foldere ---------- */
@@ -315,4 +334,251 @@ function removeAutoEmailTriggers() {
   ScriptApp.getProjectTriggers().forEach(function (t) {
     if (t.getHandlerFunction() === "autoCloseEmail") ScriptApp.deleteTrigger(t);
   });
+}
+
+/*****************************************************************
+ *****************************************************************
+ **                                                             **
+ **                       MODUL MANAGER                         **
+ **                                                             **
+ **  Aplicație separată pentru manager + echipă, servită de      **
+ **  același backend. Nu atinge nimic din aplicația tabletei.    **
+ **  Se deschide la:  URL_WEB_APP?page=app                       **
+ **                                                             **
+ *****************************************************************
+ *****************************************************************/
+
+var MGR_HEADERS = ["ID", "Moment", "Data", "Persoana", "Tip", "Detaliu", "Status", "Valoare", "Tranzactii", "Comentariu", "Poze"];
+
+/* Spreadsheet-ul managerului: SEND/„SEND – Manager" */
+function mgrSS() {
+  var r = root();
+  var it = r.getFilesByName(CONFIG.MANAGER_SPREADSHEET_NAME);
+  var ss;
+  if (it.hasNext()) ss = SpreadsheetApp.open(it.next());
+  else {
+    ss = SpreadsheetApp.create(CONFIG.MANAGER_SPREADSHEET_NAME);
+    DriveApp.getFileById(ss.getId()).moveTo(r);
+  }
+  return ss;
+}
+
+/* Tab lunar „YYYY-MM" — se creează automat dacă lipsește */
+function mgrMonthTab(ym) {
+  var ss = mgrSS();
+  var sh = ss.getSheetByName(ym);
+  if (!sh) {
+    sh = ss.insertSheet(ym);
+    sh.appendRow(MGR_HEADERS);
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+
+/* Tab „Echipă" — lista de nume (editabilă direct în Sheet sau din aplicație) */
+function mgrTeamTab() {
+  var ss = mgrSS();
+  var sh = ss.getSheetByName("Echipă");
+  if (!sh) {
+    sh = ss.insertSheet("Echipă");
+    sh.appendRow(["Nume"]);
+    CONFIG.TEAM_DEFAULT.forEach(function (n) { sh.appendRow([n]); });
+  }
+  return sh;
+}
+
+/* Tab „Catalog" — bonusuri și penalități predefinite: Tip | Denumire | Valoare */
+function mgrCatalogTab() {
+  var ss = mgrSS();
+  var sh = ss.getSheetByName("Catalog");
+  if (!sh) {
+    sh = ss.insertSheet("Catalog");
+    sh.appendRow(["Tip", "Denumire", "Valoare"]);
+    // câteva exemple de pornire — le poți edita/șterge din aplicație
+    sh.appendRow(["Penalizare", "Sarcină neîndeplinită", 20]);
+    sh.appendRow(["Penalizare", "Întârziere la program", 25]);
+    sh.appendRow(["Penalizare", "Telefon în timpul serviciului", 15]);
+    sh.appendRow(["Bonus", "Inițiativă / efort suplimentar", 25]);
+    sh.appendRow(["Bonus", "Vânzări peste target", 50]);
+  }
+  return sh;
+}
+
+/* ---------- API unic pentru aplicația de manager (google.script.run) ---------- */
+function mgrApi(req) {
+  try {
+    req = req || {};
+    var a = req.action;
+
+    // Acțiuni de CITIRE — deschise pentru toată echipa (transparență totală)
+    if (a === "init") {
+      return ok({
+        team: mgrGetTeam(),
+        catalog: mgrGetCatalog(),
+        today: todayStr()
+      });
+    }
+    if (a === "getRange") return ok({ rows: mgrGetRange(req.fromYm, req.toYm) });
+    if (a === "verifyPin") return ok({ valid: String(req.pin || "") === getManagerPin() });
+
+    // Acțiuni de SCRIERE — doar cu PIN de manager
+    if (String(req.pin || "") !== getManagerPin()) return fail("PIN invalid");
+
+    if (a === "addEntry")    return ok({ ids: mgrAddEntry(req.entry) });
+    if (a === "deleteEntry") return ok({ deleted: mgrDeleteEntry(req.ym, req.id) });
+    if (a === "saveCatalog") { mgrSaveCatalog(req.catalog); return ok({ catalog: mgrGetCatalog() }); }
+    if (a === "saveTeam")    { mgrSaveTeam(req.team); return ok({ team: mgrGetTeam() }); }
+    if (a === "uploadPhoto") return ok({ url: mgrSavePhoto(req.photo, req.folder, req.date) });
+
+    return fail("Acțiune necunoscută: " + a);
+  } catch (err) {
+    return fail(String(err));
+  }
+}
+function ok(o) { o = o || {}; o.ok = true; return o; }
+function fail(msg) { return { ok: false, error: msg }; }
+
+function mgrGetTeam() {
+  var v = mgrTeamTab().getDataRange().getValues();
+  var out = [];
+  for (var i = 1; i < v.length; i++) {
+    var n = String(v[i][0] || "").trim();
+    if (n) out.push(n);
+  }
+  return out;
+}
+function mgrSaveTeam(team) {
+  var sh = mgrTeamTab();
+  sh.clearContents();
+  sh.appendRow(["Nume"]);
+  (team || []).forEach(function (n) { if (String(n).trim()) sh.appendRow([String(n).trim()]); });
+}
+
+function mgrGetCatalog() {
+  var v = mgrCatalogTab().getDataRange().getValues();
+  var out = [];
+  for (var i = 1; i < v.length; i++) {
+    var tip = String(v[i][0] || "").trim();
+    var den = String(v[i][1] || "").trim();
+    if (!tip || !den) continue;
+    out.push({ tip: tip, denumire: den, valoare: Number(v[i][2]) || 0 });
+  }
+  return out;
+}
+function mgrSaveCatalog(catalog) {
+  var sh = mgrCatalogTab();
+  sh.clearContents();
+  sh.appendRow(["Tip", "Denumire", "Valoare"]);
+  (catalog || []).forEach(function (c) {
+    if (c && c.denumire) sh.appendRow([c.tip || "Penalizare", c.denumire, Number(c.valoare) || 0]);
+  });
+}
+
+/* O înregistrare = un rând în tabul lunii respective.
+ * entry: { data:"YYYY-MM-DD",
+ *          persoane: ["Nume1","Nume2",...]  (sau persoana:"Nume" — un singur om),
+ *          tip: "Sarcina"|"Bonus"|"Penalizare"|"Vanzari",
+ *          detaliu, status ("Îndeplinită"/"Neîndeplinită" — doar la Sarcina),
+ *          valoare (RON — la Bonus/Penalizare = suma; la Vanzari = total vânzări),
+ *          tranzactii (doar la Vanzari), comentariu, poze: [url, ...] }
+ * Dacă sunt mai multe persoane, se scrie CÂTE UN RÂND PENTRU FIECARE —
+ * aceeași sarcină/valoare/comentariu/poze — ca statisticile individuale
+ * să rămână corecte. Returnează lista de ID-uri create.
+ */
+function mgrAddEntry(entry) {
+  if (!entry || !entry.tip) throw "Înregistrare incompletă (tip).";
+  var persoane = entry.persoane && entry.persoane.length ? entry.persoane
+               : (entry.persoana ? [entry.persoana] : []);
+  if (!persoane.length) throw "Selectează cel puțin o persoană.";
+  var data = entry.data || todayStr();
+  var ym = data.substring(0, 7);
+  var sh = mgrMonthTab(ym);
+  var now = new Date();
+  var ids = [];
+  persoane.forEach(function (p) {
+    var id = Utilities.getUuid();
+    ids.push(id);
+    sh.appendRow([
+      id, now, data, p, entry.tip,
+      entry.detaliu || "", entry.status || "",
+      Number(entry.valoare) || 0, Number(entry.tranzactii) || 0,
+      entry.comentariu || "", (entry.poze || []).join(" | ")
+    ]);
+  });
+  return ids;
+}
+
+function mgrDeleteEntry(ym, id) {
+  var sh = mgrSS().getSheetByName(ym);
+  if (!sh) return false;
+  var v = sh.getDataRange().getValues();
+  for (var i = 1; i < v.length; i++) {
+    if (String(v[i][0]) === String(id)) { sh.deleteRow(i + 1); return true; }
+  }
+  return false;
+}
+
+/* Citește toate rândurile din intervalul de luni [fromYm, toYm] (ex: "2026-08".."2026-09") */
+function mgrGetRange(fromYm, toYm) {
+  fromYm = fromYm || todayStr().substring(0, 7);
+  toYm = toYm || fromYm;
+  var ss = mgrSS();
+  var out = [];
+  ss.getSheets().forEach(function (sh) {
+    var name = sh.getName();
+    if (!/^\d{4}-\d{2}$/.test(name)) return;
+    if (name < fromYm || name > toYm) return;
+    var v = sh.getDataRange().getValues();
+    for (var i = 1; i < v.length; i++) {
+      if (!v[i][0]) continue;
+      out.push({
+        id: String(v[i][0]), ym: name,
+        data: v[i][2] instanceof Date ? Utilities.formatDate(v[i][2], Session.getScriptTimeZone(), "yyyy-MM-dd") : String(v[i][2]),
+        persoana: String(v[i][3]), tip: String(v[i][4]),
+        detaliu: String(v[i][5] || ""), status: String(v[i][6] || ""),
+        valoare: Number(v[i][7]) || 0, tranzactii: Number(v[i][8]) || 0,
+        comentariu: String(v[i][9] || ""),
+        poze: String(v[i][10] || "").split(" | ").filter(function (x) { return x; })
+      });
+    }
+  });
+  return out;
+}
+
+/* Poze manager: SEND/Bonusuri/[data]/ sau SEND/Penalizari/[data]/ (max 5 per înregistrare — limitat în aplicație) */
+function mgrSavePhoto(dataUrl, folder, date) {
+  folder = (folder === "Bonusuri") ? "Bonusuri" : "Penalizari";
+  var parts = dataUrl.split(",");
+  var meta = parts[0];
+  var mime = (meta.match(/data:(.*?);/) || [, "image/jpeg"])[1];
+  var ext = mime.split("/")[1] || "jpg";
+  var bytes = Utilities.base64Decode(parts[1]);
+  var name = folder + "_" + new Date().getTime() + "." + ext;
+  var blob = Utilities.newBlob(bytes, mime, name);
+
+  var fTop = getFolder(root(), folder);              // SEND/Bonusuri sau SEND/Penalizari
+  var fDate = getFolder(fTop, date || todayStr());   // subfolder cu data zilei
+  var file = fDate.createFile(blob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  return file.getUrl();
+}
+
+/* ---------- Sheet-ul lunii următoare, creat automat cu o zi înainte de 1 ----------
+ * Rulează O DATĂ setupManagerTriggers() din editor (selectează funcția sus → Run).
+ * Declanșatorul rulează zilnic între 5-6 dimineața; când „mâine" este ziua 1,
+ * creează tabul lunii următoare. Verifică și existența tabului lunii curente.
+ */
+function setupManagerTriggers() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === "mgrDailyTick") ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger("mgrDailyTick").timeBased().everyDays(1).atHour(5).create();
+}
+function mgrDailyTick() {
+  var now = new Date();
+  mgrMonthTab(Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyy-MM")); // plasă de siguranță
+  var tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  if (tomorrow.getDate() === 1) {
+    mgrMonthTab(Utilities.formatDate(tomorrow, Session.getScriptTimeZone(), "yyyy-MM"));
+  }
 }

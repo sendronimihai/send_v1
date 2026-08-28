@@ -14,8 +14,10 @@ Aplicație operațională internă pentru cafeneaua **SEND** (Deva). Ghidează p
 
 ## Structura fișierelor
 ```
-index.html          → aplicația (toate ecranele + flux + porți + remindere)
-Code.gs             → backend Apps Script
+index.html          → aplicația angajaților, pe tabletă (ecrane + flux + porți + remindere)
+manager.html        → aplicația de manager (bonusuri/penalizări/vânzări); se lipește în
+                      Apps Script ca fișier HTML numit „manager", NU se servește din GitHub Pages
+Code.gs             → backend Apps Script (comun ambelor aplicații; modulul manager la final)
 manifest.json       → config PWA
 icon.svg            → icon aplicație
 service-worker.js   → offline + cache
@@ -38,6 +40,8 @@ SEND_Specificatie_Aplicatie.md → specificația completă
 - **Casă:** Total Z = cash + card + ia loc; Valoare cash = sold precedent + Z cash; Sold final = valoare cash − plăți cash. Soldul NU se preia automat a doua zi.
 - **Poze:** structură Drive `Poze/[Categorie]/[Data]/[Fereastra]/`.
 - Lista de produse vine din Sheet (col A = Categorie, col B = Produs); editarea Sheet-ului actualizează aplicația.
+- **Două aplicații, un singur backend:** `index.html` (tabletă, GitHub Pages) și `manager.html` (servită de Apps Script la `URL_WEB_APP?page=app`). Împart același `Code.gs`, același folder Drive `SEND` și același PIN, dar **datele sunt separate**: turele în `SEND – Date`/`Stare zilnică`, managerul în `SEND – Manager` (tab pe lună + Echipă + Catalog). Modificările la una nu o afectează pe cealaltă.
+- **PIN manager:** 2026 (Script Property `MANAGER_PIN`; fallback-ul din cod e tot 2026).
 
 ## Stare actuală (implementat)
 Toate ecranele, fluxul complet, porțile, motorul de remindere (în-app, cu sunet, editabile din interfață cu PIN de manager), reconcilierea casei (incl. Z printat vs calculat, sold numărat fizic), checklist-ul final, recepție marfă, backend-ul (date/poze/email/PIN), PWA instalabilă.
