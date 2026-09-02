@@ -274,7 +274,8 @@ function sendShiftEmail(state) {
       html.push("<p style='margin:8px 0 2px'><b>" + cat + "</b></p><ul style='margin:0'>");
       s.inv_named[cat].forEach(function (o) {
         var subMin = s.order && s.order.some(function (ord) { return ord.p === o.p && ord.cat === cat; });
-        html.push("<li>" + o.p + ": <b>" + o.qty + "</b>" + (subMin ? " ⚠" : "") + "</li>");
+        html.push("<li>" + o.p + ": <b>" + o.qty + "</b>" +
+          (o.nc ? " <i style='color:#b54'>(necompletat)</i>" : "") + (subMin ? " ⚠" : "") + "</li>");
       });
       html.push("</ul>");
     });

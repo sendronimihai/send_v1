@@ -270,6 +270,7 @@ label{font-size:14px;color:var(--ink-dim)}
     <p class="muted" id="inv-day-label" style="font-size:12px;margin:-6px 0 10px"></p>
     <input id="inv-search" placeholder="Caută produs..." style="margin-bottom:12px" oninput="renderInventory()">
     <div id="inv-list"></div>
+    <button class="btn-ghost" id="inv-cancel" style="width:100%;margin-top:12px;display:none;color:var(--bad);border-color:var(--bad)" onclick="cancelClosing()">✕ Renunță la închidere</button>
   </section>
 
   <!-- 6. CONSUM & PIERDERI -->
@@ -498,6 +499,9 @@ const EN = {
   "numărate":"counted","Caută produs...":"Search a product...","Azi:":"Today:",
   "Numără tot inventarul.":"Count the whole inventory.","Inventar complet.":"Inventory complete.",
   "Progresul se salvează automat.":"Progress is saved automatically.","← Înapoi":"← Back",
+  "produse necompletate — intră în raport cu stoc 0":"products left blank — they go into the report as stock 0",
+  "✕ Renunță la închidere":"✕ Cancel the closing",
+  "Închidere anulată.":"Closing cancelled.",
   /* consum & pierderi */
   "Consum & pierderi":"Staff consumption & losses","Completează înainte de închidere.":"Fill in before closing.",
   "Ce a consumat personalul":"What staff consumed","Ce pahare s-au spart":"Which glasses broke",
@@ -798,15 +802,27 @@ function buildOrderList(){
     if(!catActiveToday(cat))return;   // doar categoriile zilei de azi
     items.forEach((p,ii)=>{
       const v=S.inv[ci+"_"+ii];
-      if(v===undefined||v==="")return;
+      const blank=(v===undefined||v==="");   // necompletat → raportat ca stoc 0
+      const qty=blank?0:num(v);
       if(!inv_named[cat])inv_named[cat]=[];
-      inv_named[cat].push({p,qty:num(v)});
+      const rec={p,qty};
+      if(blank)rec.nc=true;
+      inv_named[cat].push(rec);
       const min=MINS[cat]&&MINS[cat][p];
       if(min==null)return;
-      if(num(v)<min)order.push({cat,p,have:num(v),min});
+      if(qty<min)order.push({cat,p,have:qty,min});
     });
   });
   S.order=order;S.inv_named=inv_named;save();
+}
+/* câte produse din inventarul zilei au rămas necompletate */
+function invMissing(){
+  let miss=0;
+  Object.entries(PRODUCTS).forEach(([cat,items],ci)=>{
+    if(!catActiveToday(cat))return;
+    items.forEach((_,ii)=>{const v=S.inv[ci+"_"+ii];if(v===undefined||v==="")miss++;});
+  });
+  return miss;
 }
 
 /* ============================================================
@@ -1126,6 +1142,7 @@ function renderInventory(){
     c.appendChild(acc);
   });
   $("inv-prog").textContent=counted+"/"+total;
+  const cb=$("inv-cancel");if(cb)cb.style.display=inClosing()?"block":"none";
   gateFor("s-inv");
 }
 function updateInvProg(){let total=0,counted=0;Object.entries(PRODUCTS).forEach(([cat,items],ci)=>{if(!catActiveToday(cat))return;items.forEach((_,ii)=>{total++;const k=ci+"_"+ii;if(S.inv[k]!==undefined&&S.inv[k]!=="")counted++;});});$("inv-prog").textContent=counted+"/"+total;gateFor("s-inv");}
@@ -1177,8 +1194,15 @@ function calcCash(){
   const counted=diffPill("cash_check",$("cash_counted").value,sf,"Numărat fizic vs. sold final");
   S.cash={cash,card,ialoc,ztot,zPrinted,soldPrev:sp,valCash:valc,platiCash:pc,soldFinal:sf,
           cashCounted:counted,notes:$("cash_notes").value};
+  // păstrăm și textul brut din câmpuri, ca ecranul să se refacă identic după refresh
+  S.cashRaw={};CASH_FIELDS.forEach(id=>{const el=$(id);if(el)S.cashRaw[id]=el.value;});
   save();
   gateFor("s-cash");
+}
+const CASH_FIELDS=["z_cash","z_card","z_ialoc","z_printed","sold_prev","plati_cash","cash_counted","cash_notes"];
+function fillCash(){
+  if(S.cashRaw)CASH_FIELDS.forEach(id=>{const el=$(id);if(el&&S.cashRaw[id]!==undefined)el.value=S.cashRaw[id];});
+  calcCash();
 }
 function cashDone(){const k=S.cash;return k&&($("z_cash").value!==""||$("z_card").value!==""||$("z_ialoc").value!=="")&&$("sold_prev").value!=="";}
 
@@ -1218,7 +1242,9 @@ function gateFor(id){
   const map={
     "s-staff":{ok:()=>S? Object.values(staffState).some(s=>s.on&&s.zone):false, lock:t("Selectează cine lucrează și zona."), open:t("Gata — pornește."), label:t("Continuă")},
     "s-morning":{ok:morningDone, lock:t("Bifează tot și alege cine a făcut + cine a verificat."), open:t("Totul bifat și verificat — poți începe."), label:t("Începe tura")},
-    "s-inv":{ok:()=>true, lock:"", open:t("Progresul se salvează automat."), label:t("← Înapoi")},
+    "s-inv":inClosing()
+      ? {ok:()=>true, lock:"", open:invGateMsg(), label:t("Continuă")}
+      : {ok:()=>true, lock:"", open:t("Progresul se salvează automat."), label:t("← Înapoi")},
     "s-loss":{ok:lossDone, lock:"", open:t("Completat."), label:t("Continuă")},
     "s-cash":{ok:cashDone, lock:t("Completează raportul Z și soldul precedent."), open:t("Casă reconciliată."), label:t("Continuă")},
     "s-final":{ok:finalDone, lock:t("Completează tot, verificat în doi."), open:t("Verificat în doi — închide tura."), label:t("Trimite & închide")}
@@ -1229,7 +1255,16 @@ function gateFor(id){
   btn.disabled=!ok;btn.textContent=g.label;
   gate.classList.toggle("locked",!ok);gate.classList.toggle("open",ok);
   msg.textContent=ok?g.open:g.lock;
+  // inventar incomplet la închidere: se poate continua, dar mesajul e de avertizare
+  if(id==="s-inv"&&inClosing()&&invMissing()>0){
+    gate.classList.add("locked");gate.classList.remove("open");
+  }
   gate.dataset.screen=id;
+}
+function invGateMsg(){
+  const n=invMissing();
+  return n? "⚠ "+n+" "+t("produse necompletate — intră în raport cu stoc 0")
+          : t("Inventar complet.");
 }
 function gateAction(){
   const id=$("gate").dataset.screen;
@@ -1242,20 +1277,34 @@ function gateAction(){
     S.started=true;save();backend("saveMorning",{morning:S.morning});
     renderDash();renderDay();show("s-dash");startReminders();
   }
-  else if(id==="s-inv"){ buildOrderList(); backend("saveInventory",{inv:S.inv,order:S.order}); show("s-dash"); }
-  else if(id==="s-loss"){ backend("saveLosses",{loss:S.loss}); show("s-cash");calcCash(); }
-  else if(id==="s-cash"){ backend("saveCash",{cash:S.cash}); renderFinal();show("s-final"); }
+  else if(id==="s-inv"){ buildOrderList(); backend("saveInventory",{inv:S.inv,order:S.order});
+    if(inClosing()){ S.phase="loss";save(); renderLoss();show("s-loss"); }
+    else show("s-dash"); }
+  else if(id==="s-loss"){ S.phase="cash";save(); backend("saveLosses",{loss:S.loss}); show("s-cash");fillCash(); }
+  else if(id==="s-cash"){ S.phase="final";save(); backend("saveCash",{cash:S.cash}); renderFinal();show("s-final"); }
   else if(id==="s-final"){ closeShift(); }
 }
 
 /* ============================================================
    ÎNCHIDERE TURĂ
    ============================================================ */
-/* închiderea poate fi începută oricând */
+/* Închiderea poate fi începută oricând, dar odată pornită nu se mai poate sări:
+   etapa curentă se ține în S.phase, deci un refresh readuce exact același ecran.
+   Ordinea: Inventar → Consum & pierderi → Casă → Checklist final. */
+const CLOSING_PHASES=["inv","loss","cash","final"];
+function inClosing(){return CLOSING_PHASES.includes(S.phase);}
 function startClosing(){
-  renderLoss();show("s-loss");
+  S.phase="inv";save();
+  renderInventory();show("s-inv");
 }
-/* stocurile se pot completa oricând, din dashboard — nu mai fac parte din închidere */
+/* singura ieșire din închidere — doar din prima etapă, ca o apăsare din greșeală
+   să nu blocheze tura în fluxul de închidere */
+function cancelClosing(){
+  S.phase="";save();
+  renderDash();show("s-dash");
+  toast(t("Închidere anulată."));
+}
+/* stocurile se pot completa și în timpul zilei, din dashboard */
 function openInventory(){
   renderInventory();show("s-inv");
 }
@@ -1568,7 +1617,13 @@ async function boot(){
     if(S.team.length){renderMorning();show(morningDone()?"s-dash":"s-morning");}
     else{renderStaff();show("s-staff");}
   } else {
-    renderDash();renderDay();show("s-dash");startReminders();
+    renderDash();renderDay();startReminders();
+    // închiderea pornită nu se poate sări cu refresh — revine exact la etapa ei
+    if(S.phase==="inv"){ renderInventory();show("s-inv"); }
+    else if(S.phase==="loss"){ renderLoss();show("s-loss"); }
+    else if(S.phase==="cash"){ show("s-cash");fillCash(); }
+    else if(S.phase==="final"){ renderFinal();show("s-final"); }
+    else show("s-dash");
   }
   updateStatusBar();
 }

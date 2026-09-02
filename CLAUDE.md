@@ -33,7 +33,9 @@ SEND_Specificatie_Aplicatie.md → specificația completă
 - Backend-ul răspunde JSON; frontend-ul tolerează lipsa lui (merge și local).
 
 ## Reguli importante (nu le strica)
-- **Porți (gates):** tura nu pornește până nu e bifat checklist-ul de dimineață. Închiderea (accesibilă oricând) trece obligatoriu prin: Consum & pierderi → Casă (Z+sold) → Checklist final. Stocurile/inventarul se completează liber, oricând, din dashboard. Toate paginile rămân accesibile la orice oră (fără restricție după 22:00).
+- **Porți (gates):** tura nu pornește până nu e bifat checklist-ul de dimineață. Închiderea (accesibilă oricând) trece obligatoriu prin: Inventar → Consum & pierderi → Casă (Z+sold) → Checklist final.
+- **Închiderea nu se poate sări:** etapa curentă se ține în `S.phase` (`inv`/`loss`/`cash`/`final`), deci un refresh readuce exact același ecran. Singura ieșire e butonul „Renunță la închidere", vizibil doar în prima etapă (inventar), ca o apăsare din greșeală să nu blocheze tura. Sumele din Casă se refac după refresh din `S.cashRaw`.
+- **Inventar:** se completează și liber, oricând, din dashboard (poarta devine „← Înapoi"). La închidere poarta lasă să treci chiar cu produse necompletate, dar avertizează; produsele goale intră în raport cu **stoc 0** și marcate `nc:true` (afișat „(necompletat)" în email). Toate paginile rămân accesibile la orice oră (fără restricție după 22:00).
 - **Checklist final:** „cine a verificat" trebuie să fie altă persoană decât „cine a făcut" (impus).
 - **Email:** pleacă DOAR la apăsarea butonului „Închide tura", indiferent de oră. Fără trimitere automată. Reminder de avertizare din 2 în 2 min 23:50–23:56 dacă tura nu e închisă.
 - **Ziua aplicației:** NU trece automat pe ziua nouă la miezul nopții. Tura deschisă continuă (cheia `send_active_day` în localStorage) până se apasă „Închide tura"; ziua nouă începe abia după închidere.
