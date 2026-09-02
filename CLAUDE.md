@@ -38,6 +38,7 @@ SEND_Specificatie_Aplicatie.md → specificația completă
 - **Inventar:** se completează și liber, oricând, din dashboard (poarta devine „← Înapoi"). La închidere poarta lasă să treci chiar cu produse necompletate, dar avertizează; produsele goale intră în raport cu **stoc 0** și marcate `nc:true` (afișat „(necompletat)" în email). Toate paginile rămân accesibile la orice oră (fără restricție după 22:00).
 - **Checklist final:** „cine a verificat" trebuie să fie altă persoană decât „cine a făcut" (impus).
 - **Email:** pleacă DOAR la apăsarea butonului „Închide tura", indiferent de oră. Fără trimitere automată. Reminder de avertizare din 2 în 2 min 23:50–23:56 dacă tura nu e închisă.
+- **Ziua săptămânii** (inventar, pagina zilei, curățenia săptămânală, progres) se ia din `shiftDow()` = ziua din `S.date`, NU din ceasul de perete. O tură închisă după miezul nopții trebuie să raporteze categoriile zilei ei — altfel ce s-a numărat dispare din email.
 - **Ziua aplicației:** NU trece automat pe ziua nouă la miezul nopții. Tura deschisă continuă (cheia `send_active_day` în localStorage) până se apasă „Închide tura"; ziua nouă începe abia după închidere.
 - **Casă:** Total Z = cash + card + ia loc; Valoare cash = sold precedent + Z cash; Sold final = valoare cash − plăți cash. Soldul NU se preia automat a doua zi.
 - **Poze:** structură Drive `Poze/[Categorie]/[Data]/[Fereastra]/`.

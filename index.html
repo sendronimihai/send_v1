@@ -708,11 +708,20 @@ const INV_DAYS = {
   "Siropuri/Piuree":             [1],
   "Consumabile Cafea":           [1]
 };
+/* Ziua săptămânii se ia din ziua TUREI (S.date), nu din ceasul de perete.
+   Altfel, o tură închisă după miezul nopții ar raporta categoriile zilei
+   următoare, iar ce s-a numărat în ziua turei ar dispărea din email. */
+function shiftDow(){
+  try{
+    if(S&&S.date){const d=new Date(S.date+"T12:00:00");if(!isNaN(d.getTime()))return d.getDay();}
+  }catch(e){}
+  return new Date().getDay();
+}
 function catActiveToday(cat){
   if(!(cat in INV_DAYS))return true;     // necunoscut → afișează mereu
   const d=INV_DAYS[cat];
   if(d===null)return true;               // zilnic
-  return d.includes(new Date().getDay());
+  return d.includes(shiftDow());
 }
 const GLASS_TYPES=["Pahar 150ml","Pahar 300ml","Pahar 400ml","Pahar limonadă","Pahar sticlă"];
 const FINAL_ITEMS=["Este curat în baie?","Este bucătăria curată?","Este curat în bar și în cafenea?","Mesele de pe terasă aranjate? Umbrele strânse?","Z + sold final verificate; telefoane, POS, tabletă la încărcat?"];
@@ -774,7 +783,7 @@ function save(){try{S.progress=dayProgress();}catch(e){}
    PROGRES SARCINI — % complete (bifă + cel puțin o poză)
    ============================================================ */
 function dayProgress(){
-  const dow=new Date().getDay();
+  const dow=shiftDow();
   const tasks=DAY_TASKS[dow]||[];
   const st=S.day[dow]||[];
   let done=0;
@@ -1000,7 +1009,7 @@ function toggleBusy(){
    4. PAGINA ZILEI
    ============================================================ */
 function renderDay(){
-  const dow=new Date().getDay();
+  const dow=shiftDow();
   $("day-title").textContent=t("Pagina zilei")+" · "+t(DAY_NAMES[dow]);
   const tasks=DAY_TASKS[dow]||[];
   const c=$("day-list");c.innerHTML="";
@@ -1327,7 +1336,7 @@ async function closeShift(){
 let remTimer=null, remFired={}, remQueue=[], remActive=false;
 function startReminders(){ if(remTimer)return;
   // ține minte sarcina săptămânală a zilei — emailul de seară avertizează dacă nu a fost confirmată
-  const dow=new Date().getDay();
+  const dow=shiftDow();
   const wt=REM.find(r=>r.type==="verify"&&r.active!==false&&(!r.days||r.days.includes(dow)));
   if(wt&&S.weeklyTask!==wt.t){S.weeklyTask=wt.t;save();}
   // reminderele fără răspuns (rămase din sesiunea precedentă / refresh) reapar
@@ -1345,7 +1354,7 @@ function startReminders(){ if(remTimer)return;
   else remCheck(); }
 function hm(d){return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");}
 function remCheck(){
-  const d=new Date(),now=hm(d),dow=d.getDay(),h=d.getHours(),m=d.getMinutes();
+  const d=new Date(),now=hm(d),dow=shiftDow(),h=d.getHours(),m=d.getMinutes();
   // mod „cafenea aglomerată": nu apare niciun reminder; avertizarea de închidere (23:50+) rămâne
   if(S.busy){closingWindowCheck(d);if(!remActive&&remQueue.length)showReminder(remQueue.shift());return;}
   REM.forEach(r=>{
