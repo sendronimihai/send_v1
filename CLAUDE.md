@@ -42,7 +42,8 @@ SEND_Specificatie_Aplicatie.md → specificația completă
 - **Ziua aplicației:** NU trece automat pe ziua nouă la miezul nopții. Tura deschisă continuă (cheia `send_active_day` în localStorage) până se apasă „Închide tura"; ziua nouă începe abia după închidere.
 - **Casă:** Total Z = cash + card + ia loc; Valoare cash = sold precedent + Z cash; Sold final = valoare cash − plăți cash. Soldul NU se preia automat a doua zi.
 - **Poze:** structură Drive `Poze/[Categorie]/[Data]/[Fereastra]/`.
-- Lista de produse vine din Sheet (col A = Categorie, col B = Produs); editarea Sheet-ului actualizează aplicația.
+- Lista de produse vine din Sheet (col A = Categorie, col B = Produs); editarea Sheet-ului actualizează aplicația. Valorile din inventar se salvează pe **poziția** produsului în listă (`ci_ii`), deci lista trebuie să rămână stabilă în timpul turei: `loadProducts()` cache-uiește ultima listă descărcată (`send_products_v1`) și o folosește dacă backend-ul nu răspunde. **Nu edita Sheet-ul în timpul unei ture deschise** — pozițiile se schimbă și cifrele deja numărate s-ar lipi de alte produse.
+- **Raportul de inventar din email** conține: toate categoriile zilei (golurile cu stoc 0) **+** orice altă categorie în care s-a numărat efectiv ceva (doar produsele completate, fără zerouri inventate). Nimic numărat nu trebuie să dispară din email.
 - **Două aplicații, un singur backend:** `index.html` (tabletă, GitHub Pages) și `manager.html` (servită de Apps Script la `URL_WEB_APP?page=app`). Împart același `Code.gs`, același folder Drive `SEND` și același PIN, dar **datele sunt separate**: turele în `SEND – Date`/`Stare zilnică`, managerul în `SEND – Manager` (tab pe lună + Echipă + Catalog). Modificările la una nu o afectează pe cealaltă.
 - **PIN manager:** 2026 (Script Property `MANAGER_PIN`; fallback-ul din cod e tot 2026).
 

@@ -808,10 +808,16 @@ let MINS = {}; // stoc minim pe produs (col C din Sheet) — sub minim intră pe
 function buildOrderList(){
   const order=[], inv_named={};
   Object.entries(PRODUCTS).forEach(([cat,items],ci)=>{
-    if(!catActiveToday(cat))return;   // doar categoriile zilei de azi
+    const active=catActiveToday(cat);
+    // s-a numărat ceva în categoria asta, chiar dacă nu e programată azi?
+    const hasAny=items.some((_,ii)=>{const v=S.inv[ci+"_"+ii];return v!==undefined&&v!=="";});
+    if(!active&&!hasAny)return;       // nici programată, nici numărată → nu apare
     items.forEach((p,ii)=>{
       const v=S.inv[ci+"_"+ii];
-      const blank=(v===undefined||v==="");   // necompletat → raportat ca stoc 0
+      const blank=(v===undefined||v==="");
+      // categoriile zilei: golurile intră cu stoc 0. Categoriile din afara zilei:
+      // raportăm doar ce s-a numărat efectiv, fără zerouri inventate.
+      if(blank&&!active)return;
       const qty=blank?0:num(v);
       if(!inv_named[cat])inv_named[cat]=[];
       const rec={p,qty};
@@ -870,10 +876,23 @@ async function backend(action,payload){
     return await r.json();
   }catch(e){console.warn("backend",action,e);return null;}
 }
+/* Lista de produse vine din Sheet. Valorile din inventar se salvează pe poziția
+   produsului în listă, deci lista trebuie să rămână aceeași toată ziua: dacă
+   backend-ul nu răspunde, folosim ultima listă descărcată, nu cea din cod —
+   altfel cifrele numărate s-ar lipi de alte produse în raport. */
+const PRODUCTS_CACHE_KEY="send_products_v1";
 async function loadProducts(){
   const res=await backend("getProducts",{sheetId:CONFIG.PRODUCTS_SHEET_ID});
-  if(res&&res.products&&Object.keys(res.products).length)PRODUCTS=res.products;
-  if(res&&res.mins)MINS=res.mins;
+  if(res&&res.products&&Object.keys(res.products).length){
+    PRODUCTS=res.products; MINS=res.mins||{};
+    try{localStorage.setItem(PRODUCTS_CACHE_KEY,JSON.stringify({products:PRODUCTS,mins:MINS}));}catch(e){}
+    return;
+  }
+  try{
+    const raw=localStorage.getItem(PRODUCTS_CACHE_KEY);
+    if(raw){const c=JSON.parse(raw);
+      if(c&&c.products&&Object.keys(c.products).length){PRODUCTS=c.products;MINS=c.mins||{};}}
+  }catch(e){}
 }
 
 /* ============================================================
