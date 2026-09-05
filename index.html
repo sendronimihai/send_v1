@@ -115,6 +115,8 @@ label{font-size:14px;color:var(--ink-dim)}
 .gate.locked .msg{color:var(--warn)}
 .gate.open .msg{color:var(--ok)}
 .gate button{flex:none;width:auto;min-width:160px}
+.gate .gate-back{min-width:0;padding:13px 14px}
+.gate .msg{flex:1}
 
 /* bottom nav */
 .nav{position:fixed;left:0;right:0;bottom:0;z-index:20;max-width:920px;margin:0 auto;
@@ -388,6 +390,7 @@ label{font-size:14px;color:var(--ink-dim)}
 
 <!-- GATE BAR (shared) -->
 <div class="gate locked" id="gate" style="display:none">
+  <button class="btn-ghost gate-back" id="gate-back" style="display:none" onclick="gateBack()">← Înapoi</button>
   <span class="msg" id="gate-msg"></span>
   <button class="btn-primary" id="gate-btn" disabled onclick="gateAction()">Continuă</button>
 </div>
@@ -1287,7 +1290,20 @@ function gateFor(id){
   if(id==="s-inv"&&inClosing()&&invMissing()>0){
     gate.classList.add("locked");gate.classList.remove("open");
   }
+  // în închidere se poate merge înapoi (ex. la stoc), dar nu se poate sări înainte
+  const back=$("gate-back");
+  if(back)back.style.display=(inClosing()&&S.phase!=="inv"&&id===phaseScreen(S.phase))?"block":"none";
   gate.dataset.screen=id;
+}
+function phaseScreen(ph){return {inv:"s-inv",loss:"s-loss",cash:"s-cash",final:"s-final"}[ph]||"";}
+/* un pas înapoi în fluxul de închidere — datele completate rămân salvate */
+function gateBack(){
+  const prev={loss:"inv",cash:"loss",final:"cash"}[S.phase];
+  if(!prev)return;
+  S.phase=prev;save();
+  if(prev==="inv"){renderInventory();show("s-inv");}
+  else if(prev==="loss"){renderLoss();show("s-loss");}
+  else if(prev==="cash"){show("s-cash");fillCash();}
 }
 function invGateMsg(){
   const n=invMissing();
