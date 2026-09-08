@@ -115,6 +115,8 @@ label{font-size:14px;color:var(--ink-dim)}
 .gate.locked .msg{color:var(--warn)}
 .gate.open .msg{color:var(--ok)}
 .gate button{flex:none;width:auto;min-width:160px}
+.gate .gate-back{min-width:0;padding:13px 14px}
+.gate .msg{flex:1}
 
 /* bottom nav */
 .nav{position:fixed;left:0;right:0;bottom:0;z-index:20;max-width:920px;margin:0 auto;
@@ -160,6 +162,14 @@ label{font-size:14px;color:var(--ink-dim)}
 .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--accent);color:var(--accent-ink);
   padding:12px 20px;border-radius:999px;font-weight:600;z-index:80;opacity:0;transition:.3s;font-size:14px}
 .toast.show{opacity:1}
+
+/* status bar — % sarcini complete (bifă + poze) */
+#statusbar{display:none;align-items:center;gap:10px;padding:8px 16px;background:var(--surface);
+  border-bottom:1px solid var(--line);font-size:12px;color:var(--ink-dim)}
+.sb-track{flex:1;height:8px;border-radius:99px;background:var(--surface-2);overflow:hidden}
+#sb-fill{height:100%;width:0%;background:var(--accent);border-radius:99px;transition:width .3s}
+#sb-txt{white-space:nowrap;font-weight:600}
+.photo:disabled{opacity:.65;cursor:default}
 </style>
 </head>
 <body>
@@ -168,7 +178,17 @@ label{font-size:14px;color:var(--ink-dim)}
   <!-- TOPBAR -->
   <div class="topbar">
     <div class="brand"><div class="mark">SE</div><div class="name">SEND</div></div>
-    <div class="clock"><div class="t" id="clk-t">--:--</div><div class="d" id="clk-d"></div></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn-ghost" id="lang-btn" style="padding:9px 12px;border-radius:12px;font-size:14px;font-weight:600;line-height:1" onclick="toggleLang()" title="Limba / Language">EN</button>
+      <button class="btn-ghost" style="padding:9px 12px;border-radius:12px;font-size:17px;line-height:1" onclick="openAdminGate()" title="Manager">⚙</button>
+      <div class="clock"><div class="t" id="clk-t">--:--</div><div class="d" id="clk-d"></div></div>
+    </div>
+  </div>
+
+  <!-- STATUS BAR — % sarcini complete -->
+  <div id="statusbar">
+    <div class="sb-track"><div id="sb-fill"></div></div>
+    <span id="sb-txt"></span>
   </div>
 
   <!-- 1. SELECȚIE ECHIPĂ + ZONĂ -->
@@ -204,24 +224,55 @@ label{font-size:14px;color:var(--ink-dim)}
       <h3>Sarcini azi</h3>
       <p class="muted" style="margin:4px 0 0">Reminderele apar automat ca pop-up. Pagina zilei e mai jos.</p>
     </div>
-    <button class="btn-ghost" style="width:100%;margin-bottom:14px" onclick="show('s-day')">Pagina zilei →</button>
+    <div class="card" style="border:1px solid var(--bad);background:var(--bad-bg)">
+      <h3 style="color:var(--bad);margin:0 0 8px">⚠ Urgent / Necesar azi</h3>
+      <textarea id="urgent-field" placeholder="Scrie aici ce e urgent sau necesar pentru azi..." style="border-color:var(--bad)" oninput="S.urgent=this.value;save()"></textarea>
+    </div>
+    <button id="busy-btn" onclick="toggleBusy()"></button>
+    <button class="btn-ghost" style="width:100%;margin-bottom:8px" onclick="show('s-day')">Pagina zilei →</button>
+    <button class="btn-ghost" style="width:100%;margin-bottom:8px" onclick="openInventory()">🧮 Stocuri / Inventar →</button>
+    <button class="btn-ghost" style="width:100%;margin-bottom:14px" onclick="renderReceptie();show('s-receptie')">📦 Recepție marfă →</button>
     <button class="btn-primary" onclick="startClosing()">Închide tura</button>
   </section>
 
   <!-- 4. PAGINA ZILEI -->
   <section id="s-day" class="screen">
     <h2 class="title" id="day-title">Pagina zilei</h2>
-    <p class="sub">Se face în timpul zilei · bifă + poză opțională.</p>
+    <p class="sub">Se face în timpul zilei · sarcina e completă cu bifă + cel puțin o poză (max 5).</p>
     <div class="card"><div id="day-list"></div></div>
+    <button class="btn-ghost" style="width:100%" onclick="show('s-dash')">← Înapoi la dashboard</button>
+  </section>
+
+  <!-- RECEPȚIE MARFĂ -->
+  <section id="s-receptie" class="screen">
+    <h2 class="title">Recepție marfă</h2>
+    <p class="sub">Completează la fiecare livrare primită.</p>
+    <div class="card">
+      <label>Cine a recepționat</label>
+      <div id="rec-cine" style="margin-top:6px"></div>
+      <label style="display:block;margin-top:12px">Furnizor / categorie marfă</label>
+      <input id="rec-furnizor" placeholder="ex. Metro, distribuitor băuturi..." style="margin-top:6px">
+      <label style="display:block;margin-top:12px">Cantitatea corespunde cu comanda/avizul?</label>
+      <div class="btn-row" id="rec-cant" style="margin-top:6px"></div>
+      <label style="display:block;margin-top:12px">Marfa e în stare bună / în termen de valabilitate?</label>
+      <div class="btn-row" id="rec-stare" style="margin-top:6px"></div>
+      <div style="margin-top:12px" id="rec-photo-row"></div>
+      <label style="display:block;margin-top:12px">Observații</label>
+      <textarea id="rec-obs" placeholder="Lipsuri, produse deteriorate, de semnalat..." style="margin-top:6px"></textarea>
+      <button class="btn-primary" style="width:100%;margin-top:14px" onclick="saveReceptie()">Salvează recepția</button>
+    </div>
+    <div id="rec-list"></div>
     <button class="btn-ghost" style="width:100%" onclick="show('s-dash')">← Înapoi la dashboard</button>
   </section>
 
   <!-- 5. INVENTAR DE SEARĂ -->
   <section id="s-inv" class="screen">
-    <h2 class="title">Inventar de seară</h2>
-    <p class="sub">Activ de la 22:00 · <span id="inv-prog">0/0</span> numărate</p>
+    <h2 class="title">Stocuri / Inventar</h2>
+    <p class="sub">Se completează oricând în timpul zilei · <span id="inv-prog">0/0</span> numărate</p>
+    <p class="muted" id="inv-day-label" style="font-size:12px;margin:-6px 0 10px"></p>
     <input id="inv-search" placeholder="Caută produs..." style="margin-bottom:12px" oninput="renderInventory()">
     <div id="inv-list"></div>
+    <button class="btn-ghost" id="inv-cancel" style="width:100%;margin-top:12px;display:none;color:var(--bad);border-color:var(--bad)" onclick="cancelClosing()">✕ Renunță la închidere</button>
   </section>
 
   <!-- 6. CONSUM & PIERDERI -->
@@ -247,7 +298,9 @@ label{font-size:14px;color:var(--ink-dim)}
       <div class="row"><label>Cash</label><input type="number" id="z_cash" oninput="calcCash()" style="width:130px" placeholder="0"></div>
       <div class="row"><label>Card</label><input type="number" id="z_card" oninput="calcCash()" style="width:130px" placeholder="0"></div>
       <div class="row"><label>Ia loc.</label><input type="number" id="z_ialoc" oninput="calcCash()" style="width:130px" placeholder="0"></div>
-      <div class="result calc"><span>Total Raport Z</span><span class="v" id="z_total">0,00 RON</span></div>
+      <div class="result calc"><span>Total Raport Z (calculat)</span><span class="v" id="z_total">0,00 RON</span></div>
+      <div class="row"><label>Z printat <span class="muted">(de pe bon)</span></label><input type="number" id="z_printed" oninput="calcCash()" style="width:130px" placeholder="0"></div>
+      <div id="z_check"></div>
     </div>
     <div class="card">
       <div class="sec-label">Reconciliere casă</div>
@@ -255,6 +308,12 @@ label{font-size:14px;color:var(--ink-dim)}
       <div class="result calc"><span>Valoare cash <span class="muted">(sold prec. + Z cash)</span></span><span class="v" id="val_cash">0,00 RON</span></div>
       <div class="row"><label>Plăți cash (ieșiri)</label><input type="number" id="plati_cash" oninput="calcCash()" style="width:130px" placeholder="0"></div>
       <div class="result final"><span>Sold final <span class="muted">(valoare − plăți)</span></span><span class="v" id="sold_final">0,00 RON</span></div>
+      <div class="row"><label>Numărat fizic în casă</label><input type="number" id="cash_counted" oninput="calcCash()" style="width:130px" placeholder="0"></div>
+      <div id="cash_check"></div>
+    </div>
+    <div class="card">
+      <div class="sec-label">Observații pentru mâine</div>
+      <textarea id="cash_notes" placeholder="Ex. lipsă mărunt, diferență de numărat, ce trebuie verificat..." oninput="calcCash()"></textarea>
     </div>
   </section>
 
@@ -265,10 +324,73 @@ label{font-size:14px;color:var(--ink-dim)}
     <div id="final-list"></div>
   </section>
 
+  <!-- MANAGER · REMINDERE (protejat cu PIN) -->
+  <section id="s-admin" class="screen">
+    <h2 class="title">Manager · Remindere</h2>
+    <p class="sub">Adaugă, oprește sau modifică reminderele zilnice.</p>
+    <div id="admin-rem-list"></div>
+    <button class="btn-ghost" style="width:100%;margin:4px 0 10px" onclick="openReminderEditor(-1)">+ Adaugă reminder</button>
+    <button class="btn-ghost" style="width:100%;margin-bottom:10px;color:var(--bad);border-color:var(--bad)" onclick="resetRemindersGate()">↺ Resetează la implicit</button>
+    <button class="btn-ghost" style="width:100%" onclick="show('s-dash')">← Înapoi la dashboard</button>
+  </section>
+
+</div>
+
+<!-- PIN MODAL (acces manager) -->
+<div class="overlay" id="pin-overlay">
+  <div class="modal">
+    <div class="ring">🔒</div>
+    <div class="muted">Acces manager</div>
+    <h3 style="margin:6px 0 14px">Introdu codul PIN</h3>
+    <input type="password" inputmode="numeric" id="pin-input" maxlength="8" style="text-align:center;font-size:22px;letter-spacing:8px" placeholder="••••">
+    <div class="warnline" id="pin-error" style="display:none;text-align:center;margin-top:8px">Cod incorect.</div>
+    <div class="btn-row" style="margin-top:16px">
+      <button class="btn-ghost" onclick="closePinModal()">Anulează</button>
+      <button class="btn-primary" onclick="submitPin()">Confirmă</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDITOR REMINDER (adaugă / modifică) -->
+<div class="overlay" id="rem-edit-overlay">
+  <div class="modal" style="text-align:left;max-height:88vh;overflow:auto">
+    <h3 id="re-title" style="margin:0 0 14px">Reminder nou</h3>
+    <label>Text afișat</label>
+    <input id="re-text" placeholder="ex. Verifică toaletele" style="margin:6px 0 12px">
+    <label>Zonă</label>
+    <div id="re-zone" style="margin:6px 0 12px"></div>
+    <label>Tip răspuns</label>
+    <div id="re-type" style="margin:6px 0 12px"></div>
+    <div id="re-bad-wrap" style="display:none;margin-bottom:12px">
+      <label>Care răspuns e o problemă (apare în Semnalări)?</label>
+      <div id="re-bad" style="margin:6px 0"></div>
+    </div>
+    <label>Program</label>
+    <div class="btn-row" id="re-schedtype" style="margin:6px 0 12px"></div>
+    <div id="re-times-wrap">
+      <div id="re-times-list" style="margin-bottom:8px"></div>
+      <button class="btn-ghost" type="button" onclick="addTimeSlot()">+ Adaugă oră</button>
+    </div>
+    <div id="re-interval-wrap" style="display:none">
+      <div class="row"><label>La fiecare (minute)</label><input type="number" id="re-int-mins" style="width:90px"></div>
+      <div class="row"><label>De la ora</label><input type="number" id="re-int-from" style="width:90px" min="0" max="23"></div>
+      <div class="row"><label>Până la ora</label><input type="number" id="re-int-to" style="width:90px" min="1" max="24"></div>
+    </div>
+    <label style="display:block;margin:14px 0 6px">Zile active <span class="muted">(nimic bifat = în fiecare zi)</span></label>
+    <div id="re-days" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px"></div>
+    <label style="display:flex;align-items:center;gap:8px;margin-top:12px;cursor:pointer">
+      <input type="checkbox" id="re-sound" style="width:auto"> Cu sunet de alarmă
+    </label>
+    <div class="btn-row" style="margin-top:18px">
+      <button class="btn-ghost" onclick="closeReminderEditor()">Anulează</button>
+      <button class="btn-primary" onclick="saveReminderEditor()">Salvează</button>
+    </div>
+  </div>
 </div>
 
 <!-- GATE BAR (shared) -->
 <div class="gate locked" id="gate" style="display:none">
+  <button class="btn-ghost gate-back" id="gate-back" style="display:none" onclick="gateBack()">← Înapoi</button>
   <span class="msg" id="gate-msg"></span>
   <button class="btn-primary" id="gate-btn" disabled onclick="gateAction()">Continuă</button>
 </div>
@@ -298,20 +420,198 @@ label{font-size:14px;color:var(--ink-dim)}
    SEND — configurare. Completează după deploy-ul Apps Script.
    ============================================================ */
 const CONFIG = {
-  BACKEND_URL: "",                 // URL-ul web app Apps Script (gol = doar local)
+  BACKEND_URL: "https://script.google.com/macros/s/AKfycbyGHzaAGxB--oh__irW8oQrKndYburRqp67axcOl_E5K-2NYQ1JY40J1Qo8E2aNG8DD/exec",
   PRODUCTS_SHEET_ID: "1kz0Yy-vcJ6MYTqJgt9D3zMHNg84AQppFVTk6do-5Hj8",
-  MANAGER_PIN: "1234",
   EMAIL_TO: "",                    // destinatarul raportului (se setează în backend ideal)
   PROC1_RO: "https://docs.google.com/document/d/1rloElnoUBvWX1DszxxtmNJ4lHnaHG9urOu2RZp0OZjw/edit",
   PROC1_EN: "https://docs.google.com/document/d/1uwxfEEfdOssVaehEmvM9NwA9Q0rKUIhUBUBaZwvLyc0/edit"
 };
 
+/* ============================================================
+   LIMBĂ (RO / EN) — comutator global, persistat între zile
+   ============================================================ */
+const LANG = localStorage.getItem("send_lang") || "ro";
+function toggleLang(){ localStorage.setItem("send_lang", LANG === "ro" ? "en" : "ro"); location.reload(); }
+function t(s){ return (LANG === "en" && EN[s] !== undefined) ? EN[s] : s; }
+const EN = {
+  /* nav + gate */
+  "Dashboard":"Dashboard","Ziua":"Day","Închide":"Close","Continuă":"Continue",
+  /* echipă */
+  "Cine lucrează azi?":"Who's working today?",
+  "Atinge numele, apoi alege zona.":"Tap a name, then pick the area.",
+  "Persoană nouă · doar pentru azi":"New person · today only",
+  "Scrie numele...":"Type the name...","Adaugă":"Add",
+  "Selectează cine lucrează și zona.":"Select who's working and their area.",
+  "Gata — pornește.":"Ready — let's go.",
+  /* zone */
+  "Bar":"Bar","Sală":"Floor","Bucătărie":"Kitchen","Toți":"Everyone","Bar + Bucătărie":"Bar + Kitchen",
+  "Terasă":"Terrace","Interior":"Indoor","Baie":"Bathroom",
+  /* dimineață */
+  "Checklist de dimineață":"Morning checklist",
+  "Tura pornește doar când totul e bifat.":"The shift starts only when everything is checked.",
+  "BAR / TERASĂ / SALĂ":"BAR / TERRACE / FLOOR","BUCĂTĂRIE":"KITCHEN",
+  "Pregătire sirop":"Prepare syrup","Pregătire suc lămâie":"Prepare lemon juice",
+  "Pregătire matcha":"Prepare matcha","Pregătire ceai Galaxy":"Prepare Galaxy tea",
+  "Pregătire fructe deshidratate":"Prepare dried fruit","Pregătire coji SEND":"Prepare SEND peels",
+  "Aprins cuptorul":"Turn on the oven","Verificare temperatură frigidere":"Check fridge temperatures",
+  "Verificare / completare etichete produse desfăcute":"Check / complete labels on opened products",
+  "Pregătire salam / mozzarella":"Prepare salami / mozzarella",
+  "Curat înainte de a începe ziua":"Clean before starting the day",
+  "Lipsește ceva?":"Anything missing?","(opțional)":"(optional)","Scrie aici...":"Write here...",
+  "Bifează tot și alege cine a făcut + cine a verificat.":"Check everything and pick who did it + who verified.",
+  "Totul bifat și verificat — poți începe.":"All checked and verified — you can start.",
+  "Începe tura":"Start the shift",
+  "Făcut de…":"Done by…","Verificat de…":"Verified by…",
+  "⚠ Verificatorul trebuie să fie altă persoană.":"⚠ The verifier must be a different person.",
+  /* dashboard */
+  "Tura de azi":"Today's shift","Sarcini azi":"Today's tasks",
+  "Reminderele apar automat ca pop-up. Pagina zilei e mai jos.":"Reminders pop up automatically. The day page is below.",
+  "⚠ Urgent / Necesar azi":"⚠ Urgent / Needed today",
+  "Scrie aici ce e urgent sau necesar pentru azi...":"Write here anything urgent or needed today...",
+  "Pagina zilei →":"Day page →","🧮 Stocuri / Inventar →":"🧮 Stock / Inventory →",
+  "📦 Recepție marfă →":"📦 Goods receiving →","Închide tura":"Close the shift",
+  "remindere active":"active reminders",
+  /* pagina zilei */
+  "Pagina zilei":"Day page",
+  "Se face în timpul zilei · sarcina e completă cu bifă + cel puțin o poză (max 5).":"Done during the day · a task is complete with a check + at least one photo (max 5).",
+  "← Înapoi la dashboard":"← Back to dashboard",
+  "Duminică":"Sunday","Luni":"Monday","Marți":"Tuesday","Miercuri":"Wednesday","Joi":"Thursday","Vineri":"Friday","Sâmbătă":"Saturday",
+  "Pompițe sirop":"Syrup pumps","Frigidere":"Fridges","Măturat + spălat cafenea":"Sweep + mop the café",
+  "Sub canapele":"Under the sofas","Rafturi alcool":"Alcohol shelves","Pahare alcool":"Alcohol glasses",
+  "Geamuri":"Windows","Stoc arome + piure":"Flavours + purée stock","Apă plante":"Water the plants",
+  "Curat în vestiar + magazie":"Clean locker room + storage","Oglinzi cafenea":"Café mirrors",
+  "Curățenie generală baie":"Deep clean bathroom","Praf cafenea":"Dust the café","Băi":"Bathrooms",
+  "Curățenie generală bucătărie":"Deep clean kitchen",
+  "📷 Poză":"📷 Photo",
+  /* recepție */
+  "Recepție marfă":"Goods receiving","Completează la fiecare livrare primită.":"Fill in for every delivery received.",
+  "Cine a recepționat":"Received by","Alege persoana...":"Pick a person...",
+  "Furnizor / categorie marfă":"Supplier / goods category",
+  "ex. Metro, distribuitor băuturi...":"e.g. Metro, drinks distributor...",
+  "Cantitatea corespunde cu comanda/avizul?":"Does the quantity match the order / delivery note?",
+  "Marfa e în stare bună / în termen de valabilitate?":"Are the goods in good condition / within expiry date?",
+  "Observații":"Notes","Lipsuri, produse deteriorate, de semnalat...":"Missing items, damaged products, to flag...",
+  "Salvează recepția":"Save the receiving","Recepții azi":"Today's receivings",
+  "⚠ verifică":"⚠ check","✓ ok":"✓ ok","Da":"Yes","Nu":"No",
+  "Alege cine a recepționat marfa.":"Pick who received the goods.",
+  "Răspunde la ambele întrebări Da/Nu.":"Answer both Yes/No questions.",
+  "Recepție salvată.":"Receiving saved.",
+  /* inventar */
+  "Stocuri / Inventar":"Stock / Inventory",
+  "Se completează oricând în timpul zilei ·":"Can be filled in anytime during the day ·",
+  "numărate":"counted","Caută produs...":"Search a product...","Azi:":"Today:",
+  "Numără tot inventarul.":"Count the whole inventory.","Inventar complet.":"Inventory complete.",
+  "Progresul se salvează automat.":"Progress is saved automatically.","← Înapoi":"← Back",
+  "produse necompletate — intră în raport cu stoc 0":"products left blank — they go into the report as stock 0",
+  "✕ Renunță la închidere":"✕ Cancel the closing",
+  "Închidere anulată.":"Closing cancelled.",
+  /* consum & pierderi */
+  "Consum & pierderi":"Staff consumption & losses","Completează înainte de închidere.":"Fill in before closing.",
+  "Ce a consumat personalul":"What staff consumed","Ce pahare s-au spart":"Which glasses broke",
+  "Ce alte pierderi avem":"Other losses","+ Adaugă":"+ Add","Completat.":"Done.",
+  "Produs":"Product","Cant.":"Qty","Tip pahar":"Glass type","Câte":"How many","Descriere pierdere":"Loss description",
+  /* casă */
+  "Închidere · casa":"Closing · cash register","Tu scrii sumele, aplicația calculează.":"You enter the amounts, the app calculates.",
+  "Raport Z":"Z report","Ia loc.":"Take-away","Total Raport Z (calculat)":"Total Z report (calculated)",
+  "Z printat":"Printed Z","(de pe bon)":"(from the receipt)","Reconciliere casă":"Cash reconciliation",
+  "Sold ziua precedentă":"Previous day balance","Valoare cash":"Cash value","(sold prec. + Z cash)":"(prev. balance + Z cash)",
+  "Plăți cash (ieșiri)":"Cash payments (out)","Sold final":"Final balance","(valoare − plăți)":"(value − payments)",
+  "Numărat fizic în casă":"Physically counted in the register","Observații pentru mâine":"Notes for tomorrow",
+  "Ex. lipsă mărunt, diferență de numărat, ce trebuie verificat...":"E.g. missing change, counting difference, things to check...",
+  "Completează raportul Z și soldul precedent.":"Fill in the Z report and the previous balance.",
+  "Casă reconciliată.":"Register reconciled.",
+  "Z calculat vs. printat":"Z calculated vs. printed","Numărat fizic vs. sold final":"Physically counted vs. final balance",
+  "corespunde":"matches","diferență":"difference",
+  /* checklist final */
+  "Checklist final":"Final checklist",
+  "Cine verifică trebuie să fie altă persoană decât cine a făcut.":"The verifier must be a different person than the doer.",
+  "Este curat în baie?":"Is the bathroom clean?","Este bucătăria curată?":"Is the kitchen clean?",
+  "Este curat în bar și în cafenea?":"Are the bar and the café clean?",
+  "Mesele de pe terasă aranjate? Umbrele strânse?":"Terrace tables arranged? Umbrellas closed?",
+  "Z + sold final verificate; telefoane, POS, tabletă la încărcat?":"Z + final balance checked; phones, POS, tablet charging?",
+  "Completează tot, verificat în doi.":"Complete everything, verified by two people.",
+  "Verificat în doi — închide tura.":"Verified by two — close the shift.",
+  "Trimite & închide":"Send & close","✓ Gata":"✓ Done",
+  "Tură închisă":"Shift closed","Raportul a fost trimis. Mulțumesc.":"The report has been sent. Thank you.",
+  "Tură închisă azi":"Shift closed today","Raportul a fost trimis.":"The report has been sent.",
+  "Tura închisă · raport trimis":"Shift closed · report sent",
+  /* închidere / restricție 22:00 */
+  "Nu uita să închizi tura!":"Don't forget to close the shift!",
+  /* remindere pop-up */
+  "Mai târziu":"Later","Confirmă":"Confirm","Amână 10 min":"Snooze 10 min","Am făcut":"Done","Gata":"Done",
+  "Fă poze pentru fiecare zonă:":"Take photos for each area:",
+  "Pornește muzica":"Turn on the music",
+  "Etichetare și rotație FIFO produse desfăcute la bar":"Label and FIFO-rotate opened products at the bar",
+  "Verifică toaletele":"Check the toilets","Verifică frigiderele":"Check the fridges",
+  "Cross-check bar":"Cross-check the bar",
+  "Verificare stoc prânz (suc lămâie, felii lămâie+mentă, cafea ice coffee, lime, matcha, ceai Galaxy)":"Lunch stock check (lemon juice, lemon+mint slices, ice coffee, lime, matcha, Galaxy tea)",
+  "Pregătire karaoke":"Karaoke setup","Pune microfoanele la încărcat":"Put the microphones on charge",
+  "Pune POS-ul, telefonul și tableta la încărcat":"Put the POS, the phone and the tablet on charge",
+  "Începe curățenia de seară":"Start the evening cleaning",
+  "Avem personal unde sunt clienții?":"Do we have staff where the customers are?",
+  "A stat cineva pe telefon cât au fost mese ocupate?":"Was anyone on their phone while tables were occupied?",
+  "Tot ok?":"Everything ok?",
+  "Verificare curățenie (bar, bucătărie, terasă, interior, baie)":"Cleanliness check (bar, kitchen, terrace, indoor, bathroom)",
+  "Curățenie săptămânală: pompițele de sirop, frigiderele, bar, barmat pahare (geamuri + interior + măturat/spălat)":"Weekly cleaning: syrup pumps, fridges, bar, glass bar mat (windows + inside + sweep/mop)",
+  "Curățenie săptămânală: rafturi pahare/alcool, geamuri":"Weekly cleaning: glass/alcohol shelves, windows",
+  "Curățenie săptămânală: aranjare magazie + vestiar":"Weekly cleaning: tidy the storage + locker room",
+  "Curățenie săptămânală: oglinzi, plante":"Weekly cleaning: mirrors, plants",
+  "Curățenie săptămânală: pompițele de sirop, espressor, ceștile de cafea":"Weekly cleaning: syrup pumps, espresso machine, coffee cups",
+  "Curățenie săptămânală: pahare de sticlă, rafturi pahare (curățat praf)":"Weekly cleaning: glass cups, glass shelves (dusting)",
+  "Curățenie săptămânală: măturat + spălat sub mese & canapele":"Weekly cleaning: sweep + mop under tables & sofas",
+  /* status bar */
+  "sarcini complete (bifă + poze)":"tasks complete (check + photos)",
+  "aglomerat":"busy",
+  /* cafenea aglomerată */
+  "Cafenea aglomerată — ACTIV · reminderele sunt oprite":"Busy café — ON · reminders are paused",
+  "Cafenea aglomerată — apasă când echipa e ocupată cu servirea":"Busy café — tap when the team is busy serving",
+  "Remindere oprite — mod aglomerat activ":"Reminders paused — busy mode on",
+  "Remindere pornite din nou":"Reminders back on",
+  /* PIN + admin */
+  "Acces manager":"Manager access","Introdu codul PIN":"Enter the PIN code","Cod incorect.":"Wrong code.",
+  "Anulează":"Cancel",
+  "Fără backend configurat — accesul manager nu e protejat de PIN.":"No backend configured — manager access is not PIN-protected.",
+  "Manager · Remindere":"Manager · Reminders",
+  "Adaugă, oprește sau modifică reminderele zilnice.":"Add, disable or edit the daily reminders.",
+  "+ Adaugă reminder":"+ Add reminder","↺ Resetează la implicit":"↺ Reset to defaults",
+  "Niciun reminder momentan.":"No reminders yet.",
+  "Oprit":"Off","Activ":"Active","Pornește":"Enable","Oprește":"Disable","Modifică":"Edit","Șterge":"Delete","Sigur?":"Sure?",
+  "zilnic":"daily","la fiecare":"every","min":"min",
+  "Reminder șters.":"Reminder deleted.","Remindere resetate la implicit.":"Reminders reset to defaults.",
+  "Apasă din nou pentru confirmare.":"Tap again to confirm.",
+  "Reminder nou":"New reminder","Modifică reminder":"Edit the reminder",
+  "Text afișat":"Displayed text","ex. Verifică toaletele":"e.g. Check the toilets",
+  "Zonă":"Area","ex. Bar, Sală, Toți":"e.g. Bar, Floor, Everyone","Tip răspuns":"Response type",
+  "Bifare (am făcut)":"Check (done)","Da / Nu":"Yes / No","Poză":"Photo","Făcut + verificat (în doi)":"Done + verified (two people)",
+  "Care răspuns e o problemă (apare în Semnalări)?":"Which answer is a problem (appears in Flags)?",
+  "Program":"Schedule","Ore fixe":"Fixed times","Interval":"Interval","+ Adaugă oră":"+ Add a time",
+  "La fiecare (minute)":"Every (minutes)","De la ora":"From hour","Până la ora":"Until hour",
+  "Zile active":"Active days","(nimic bifat = în fiecare zi)":"(nothing checked = every day)",
+  "Cu sunet de alarmă":"With alarm sound","Salvează":"Save",
+  "Scrie textul reminderului.":"Write the reminder text.","Completează zona.":"Fill in the area.",
+  "Reminder salvat.":"Reminder saved."
+};
+/* traduce textele statice din HTML (rulează o dată, la pornire) */
+function translateDom(){
+  if(LANG!=="en")return;
+  const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
+  let n;
+  while((n=walker.nextNode())){
+    const s=n.nodeValue.trim();
+    if(s&&EN[s]!==undefined)n.nodeValue=n.nodeValue.replace(s,EN[s]);
+  }
+  document.querySelectorAll("input[placeholder],textarea[placeholder]").forEach(el=>{
+    if(EN[el.placeholder]!==undefined)el.placeholder=EN[el.placeholder];
+  });
+}
+
 /* ---------- date statice ---------- */
 const TEAM = ["Cipri","Samir","Bishma","Asmita","Ranjana","Sushma","Sujata"];
 const ZONES = [["bar","Bar"],["sala","Sală"],["bucatarie","Bucătărie"]];
+const VERIFIERS = ["Samir","Bishma","Cipri"];
 
 const MORNING = {
-  barsala: { titlu:"BAR / TERASĂ / SALĂ", zones:["bar","sala"], items:["A fost făcută verificarea conform procedurii nr. 1?"], text:"Lipsește ceva?" },
+  barsala: { titlu:"BAR / TERASĂ / SALĂ", zones:["bar","sala"], proc1:true, items:["Pregătire sirop","Pregătire suc lămâie","Pregătire matcha","Pregătire ceai Galaxy","Pregătire fructe deshidratate","Pregătire coji SEND"], text:"Lipsește ceva?" },
   bucatarie: { titlu:"BUCĂTĂRIE", zones:["bucatarie"], items:["Aprins cuptorul","Verificare temperatură frigidere","Verificare / completare etichete produse desfăcute","Pregătire salam / mozzarella","Curat înainte de a începe ziua"] }
 };
 
@@ -327,26 +627,56 @@ const DAY_TASKS = {
 const DAY_NAMES=["Duminică","Luni","Marți","Miercuri","Joi","Vineri","Sâmbătă"];
 
 const REMINDERS = [
-  {id:"toalete", t:"Verifică toaletele", type:"done", zone:"Sală", interval:120, from:10, to:22, sound:true},
+  {id:"muzica", t:"Pornește muzica", type:"done", zone:"Bar", times:["09:00"], sound:false},
+  {id:"fifo", t:"Etichetare și rotație FIFO produse desfăcute la bar", type:"done", zone:"Bar", times:["09:00"], sound:false},
+  {id:"toalete", t:"Verifică toaletele", type:"done", zone:"Sală", times:["09:00","12:00","14:00","17:00","18:00","19:00","21:00","22:30"], sound:true},
   {id:"frig", t:"Verifică frigiderele", type:"done", zone:"Bar + Bucătărie", times:["11:00","17:00"], sound:false},
   {id:"cross", t:"Cross-check bar", type:"done", zone:"Bar", times:["09:45"], sound:false},
   {id:"stocp", t:"Verificare stoc prânz (suc lămâie, felii lămâie+mentă, cafea ice coffee, lime, matcha, ceai Galaxy)", type:"done", zone:"Bar", times:["15:00"], sound:true},
   {id:"kara", t:"Pregătire karaoke", type:"done", zone:"Toți", times:["11:00"], days:[5], sound:true},
   {id:"mic", t:"Pune microfoanele la încărcat", type:"done", zone:"Bar", times:["10:00"], days:[5], sound:true},
+  {id:"incarcare", t:"Pune POS-ul, telefonul și tableta la încărcat", type:"done", zone:"Toți", times:["22:00"], sound:true},
   {id:"seara", t:"Începe curățenia de seară", type:"done", zone:"Toți", times:["23:00"], sound:true},
-  {id:"prez", t:"Avem personal unde sunt clienții?", type:"yesno", bad:"Nu", zone:"Toți", interval:60, from:8, to:24, sound:true},
+  {id:"prez", t:"Avem personal unde sunt clienții?", type:"yesno", bad:"Nu", zone:"Toți", times:["09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00","21:00","22:00","22:30"], sound:true},
   {id:"tel", t:"A stat cineva pe telefon cât au fost mese ocupate?", type:"yesno", bad:"Da", zone:"Toți", interval:60, from:8, to:24, sound:true},
-  {id:"cur", t:"Verificare curățenie (bar, bucătărie, terasă, interior, baie)", type:"photo", zone:"Toți", times:["12:00","17:00","22:30"], sound:true}
+  {id:"totok", t:"Tot ok?", type:"yesno", bad:"Nu", zone:"Toți", times:["09:00","09:20","09:40","10:00","10:20","10:40","11:00","11:20","11:40","12:00","12:20","12:40","13:00","13:20","13:40","14:00","14:20","14:40","15:00","15:20","15:40","16:00","16:20","16:40","17:00","17:20","17:40","18:00","18:20","18:40","19:00","19:20","19:40","20:00","20:20","20:40","21:00","21:20","21:40","22:00","22:20","22:40"], sound:true},
+  {id:"cur", t:"Verificare curățenie (bar, bucătărie, terasă, interior, baie)", type:"photo", zone:"Toți", times:["12:00","17:00","22:30"], sound:true},
+  {id:"sapt1", t:"Curățenie săptămânală: pompițele de sirop, frigiderele, bar, barmat pahare (geamuri + interior + măturat/spălat)", type:"verify", zone:"Toți", times:["10:00","12:00","14:00","16:00","18:00","20:00"], days:[1], sound:true},
+  {id:"sapt2", t:"Curățenie săptămânală: rafturi pahare/alcool, geamuri", type:"verify", zone:"Toți", times:["10:00","12:00","14:00","16:00","18:00","20:00"], days:[2], sound:true},
+  {id:"sapt3", t:"Curățenie săptămânală: aranjare magazie + vestiar", type:"verify", zone:"Toți", times:["10:00","12:00","14:00","16:00","18:00","20:00"], days:[3], sound:true},
+  {id:"sapt4", t:"Curățenie săptămânală: oglinzi, plante", type:"verify", zone:"Toți", times:["10:00","12:00","14:00","16:00","18:00","20:00"], days:[4], sound:true},
+  {id:"sapt5", t:"Curățenie săptămânală: pompițele de sirop, espressor, ceștile de cafea", type:"verify", zone:"Toți", times:["10:00","12:00","14:00","16:00","18:00","20:00"], days:[5], sound:true},
+  {id:"sapt6", t:"Curățenie săptămânală: pahare de sticlă, rafturi pahare (curățat praf)", type:"verify", zone:"Toți", times:["10:00","12:00","14:00","16:00","18:00","20:00"], days:[6], sound:true},
+  {id:"sapt0", t:"Curățenie săptămânală: măturat + spălat sub mese & canapele", type:"verify", zone:"Toți", times:["10:00","12:00","14:00","16:00","18:00","20:00"], days:[0], sound:true}
 ];
+
+/* Lista de remindere e editabilă din interfață (PIN manager) — versiunea
+   curentă, cu eventualele modificări, se ține separat în localStorage;
+   REMINDERS de mai sus rămâne sursa implicită la prima rulare. */
+const REM_KEY="send_reminders_v1";
+function loadReminders(){
+  try{const raw=localStorage.getItem(REM_KEY);
+    if(raw){const list=JSON.parse(raw);
+      // reminderele implicite noi (adăugate în cod ulterior) intră automat în lista salvată
+      let added=false;
+      REMINDERS.forEach(d=>{if(!list.some(r=>r.id===d.id)){list.push(JSON.parse(JSON.stringify(d)));added=true;}});
+      if(added)localStorage.setItem(REM_KEY,JSON.stringify(list));
+      return list;}
+  }catch(e){}
+  return JSON.parse(JSON.stringify(REMINDERS));
+}
+let REM=loadReminders();
+function persistReminders(){localStorage.setItem(REM_KEY,JSON.stringify(REM));}
 
 const PRODUCTS_FALLBACK = {
   "Fructe + Verdeață":["Lămâi","Lime","Portocale","Mentă","Banane"],
+  "Pahare":["Pahare limonadă","Pahare vin alb","Pahare vin roșu","Pahare prosecco","Pahare Martini"],
   "Consumabile Bar":["Paie","Zahăr","Paletine","Pahare 150ml + capace","Pahare 300ml + capace","Pahare 400ml + capace","Pahare Limonadă + capace"],
   "Consumabile Băi + Cleaning":["Saci 60L","Saci 30L","Mănuși M/S","Săpun mâini","Săpun de vase","Hârtie mâini baie/bar","Soluție mop","Soluție spray","Clor","Dezinfectant","Microfibre + lavete","Cap de mop","Bureți vase","Parfumate WC"],
   "Bucătărie":["Caputo roșu","Caputo albastru","Semola","Sos roșii","Busuioc mic","Busuioc mare","Salam dolce","Salam picant","Drojdie","Ulei","Sos picant","Mozzarella","Sare","Paline"],
   "Bere":["Corona","Ursus","Ursus 0%","Ursus nefiltrată","Peroni","Ursus Cooler","Peroni KEG (tap)"],
   "Sucuri Limonade":["Portocale","Piersici","Ananas","Măr","Cranberry","Sprite","Schweppes","Aloe Vera","Sclipici","Ceai fasolea fluturilor","Matcha"],
-  "Sucuri (mixere)":["Cola 0,5L","Apă tonică 0,5L","Apă tonică roz 0,5L","Apă minerală 0,5L"],
+  "Sucuri cocktail":["Cola 0,5L","Apă tonică 0,5L","Apă tonică roz 0,5L","Apă minerală 0,5L"],
   "Spirtoase":["Finlandia (Vodka)","Jameson (Whiskey)","Wild Turkey (Whiskey)","Jose Cuervo (Tequila)","Martell VS (Cognac)","Aperol"],
   "Ginuri":["Beefeater Dry","Tanqueray Classic","Tanqueray 0%","Beefeater Pink","Bombay"],
   "Sucuri Gama Cola":["Cola","Cola 0%","Fanta","Sprite","Schweppes","Schweppes Pink","Dorna plată","Dorna minerală"],
@@ -355,6 +685,47 @@ const PRODUCTS_FALLBACK = {
   "Siropuri / Piureuri":["Caramel","Caramel sărat","Ciocolată","Vanilie","Hazelnut","Tiramisu","Coconut","Mint","Soc","Grenadine","Le Blue","piure Passion","piure Wildberry","piure Raspberry","piure Strawberry"],
   "Consumabile Cafea":["Cafea","Cafea Deco","Lapte","Lapte vegan","Frișcă","Ciocolată","Ceaiuri","Zahăr KG","Piscoturi","Patroane frișcă","Plicuri scorțișoară/chili/cacao","Miere","Zahăr plic"]
 };
+
+/* Zile de inventar per categorie (0=Dum, 1=Lun, 2=Mar, 3=Mie, 4=Joi, 5=Vin, 6=Sâm).
+   null = zilnic. Categorii absente din hartă = afișate mereu (fallback sigur). */
+const INV_DAYS = {
+  "Fructe + Verdeata":  null,
+  "Fructe + Verdeață":  null,
+  "Pahare":             null,
+  "Consumabile Bar":             [1],
+  "Consumabile Bai + Cleaning":  [1],
+  "Consumabile Băi + Cleaning":  [1],
+  "Bucatarie":                   null,
+  "Bucătărie":                   null,
+  "Bere":                        [2],
+  "Sucuri Mocktails":            [3],
+  "Sucuri Limonade":             [3],
+  "Sucuri cocktail":             [1,3],
+  "Sucuri (mixere)":             [1,3],
+  "Sucuri Gama Cola":            [1,3],
+  "Spirtoase":                   [4],
+  "Ginuri":                      [4],
+  "Lichior":                     [4],
+  "Prosecco & Vinuri":           [4],
+  "Siropuri / Piureuri":         [1],
+  "Siropuri/Piuree":             [1],
+  "Consumabile Cafea":           [1]
+};
+/* Ziua săptămânii se ia din ziua TUREI (S.date), nu din ceasul de perete.
+   Altfel, o tură închisă după miezul nopții ar raporta categoriile zilei
+   următoare, iar ce s-a numărat în ziua turei ar dispărea din email. */
+function shiftDow(){
+  try{
+    if(S&&S.date){const d=new Date(S.date+"T12:00:00");if(!isNaN(d.getTime()))return d.getDay();}
+  }catch(e){}
+  return new Date().getDay();
+}
+function catActiveToday(cat){
+  if(!(cat in INV_DAYS))return true;     // necunoscut → afișează mereu
+  const d=INV_DAYS[cat];
+  if(d===null)return true;               // zilnic
+  return d.includes(shiftDow());
+}
 const GLASS_TYPES=["Pahar 150ml","Pahar 300ml","Pahar 400ml","Pahar limonadă","Pahar sticlă"];
 const FINAL_ITEMS=["Este curat în baie?","Este bucătăria curată?","Este curat în bar și în cafenea?","Mesele de pe terasă aranjate? Umbrele strânse?","Z + sold final verificate; telefoane, POS, tabletă la încărcat?"];
 
@@ -362,16 +733,115 @@ const FINAL_ITEMS=["Este curat în baie?","Este bucătăria curată?","Este cura
    STARE (localStorage, pe zi)
    ============================================================ */
 function todayKey(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+let closingInProgress=false; // blochează trecerea pe ziua nouă cât timp se trimite raportul
 let S = load();
-function load(){
-  try{const raw=localStorage.getItem("send_"+todayKey());if(raw)return JSON.parse(raw);}catch(e){}
-  return { date:todayKey(), team:[], morning:{}, day:{}, inv:{}, loss:{consum:[{p:"",c:""}],pahare:[{t:"",n:""}],alte:[{d:"",c:""}]},
-           cash:{}, final:{}, remLog:[], started:false, closed:false, phase:"" };
+function readState(key){
+  if(!key)return null;
+  try{const raw=localStorage.getItem("send_"+key);return raw?JSON.parse(raw):null;}catch(e){return null;}
 }
-function save(){try{localStorage.setItem("send_"+todayKey(),JSON.stringify(S));}catch(e){}
-  if(CONFIG.BACKEND_URL) backend("autosave",{state:S}); }
+/* plasă de siguranță: caută cea mai recentă tură DESCHISĂ din ultimele 2 zile,
+   pentru cazul în care pointerul send_active_day lipsește sau s-a pierdut
+   (ex. tură pornită pe o versiune veche a aplicației) */
+function findRecentOpenState(){
+  let best=null;
+  try{
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      const m=k&&k.match(/^send_(\d{4}-\d{2}-\d{2})$/);
+      if(!m)continue;
+      const age=(Date.now()-new Date(m[1]+"T00:00:00").getTime())/86400000;
+      if(age<0||age>2)continue;                     // doar azi/ieri/alaltăieri
+      const s=readState(m[1]);
+      if(s&&!s.closed&&s.started&&(!best||s.date>best.date))best=s;
+    }
+  }catch(e){}
+  return best;
+}
+function load(){
+  // ziua NU se schimbă automat la miezul nopții sau la refresh:
+  // tura deschisă continuă până se apasă „Închide tura"; abia apoi începe o zi nouă
+  let s=readState(localStorage.getItem("send_active_day"));
+  if(s&&s.closed&&s.date!==todayKey())s=null;   // zi veche, deja închisă — nu se reia
+  if(!s)s=readState(todayKey());
+  if(!s)s=findRecentOpenState();                // pointer pierdut → caută tura deschisă
+  if(s){
+    if(!s.remDone)s.remDone={};
+    if(!s.remPending)s.remPending={};
+    if(!s.busyLog)s.busyLog=[];
+    if(!s.closed){ try{localStorage.setItem("send_active_day",s.date);}catch(e){} }
+    return s;
+  }
+  try{localStorage.setItem("send_active_day",todayKey());}catch(e){}
+  return { date:todayKey(), team:[], morning:{}, day:{}, inv:{}, loss:{consum:[{p:"",c:""}],pahare:[{t:"",n:""}],alte:[{d:"",c:""}]},
+           cash:{}, final:{}, receptii:[], remLog:[], remDone:{}, remPending:{}, busy:false, busyLog:[], started:false, closed:false, phase:"" };
+}
+function save(){try{S.progress=dayProgress();}catch(e){}
+  try{localStorage.setItem("send_"+S.date,JSON.stringify(S));
+    if(!S.closed)localStorage.setItem("send_active_day",S.date); // pointerul se reface la fiecare salvare
+  }catch(e){}
+  if(CONFIG.BACKEND_URL) backend("autosave",{state:S});
+  try{updateStatusBar();}catch(e){} }
+
+/* ============================================================
+   PROGRES SARCINI — % complete (bifă + cel puțin o poză)
+   ============================================================ */
+function dayProgress(){
+  const dow=shiftDow();
+  const tasks=DAY_TASKS[dow]||[];
+  const st=S.day[dow]||[];
+  let done=0;
+  tasks.forEach((_,i)=>{const x=st[i];if(x&&x.done&&((x.photos||0)>0||x.photo))done++;});
+  const total=tasks.length;
+  return {done,total,pct:total?Math.round(done*100/total):0};
+}
+function updateStatusBar(){
+  const sb=$("statusbar");if(!sb)return;
+  const on=S.started&&!S.closed;
+  sb.style.display=on?"flex":"none";
+  if(!on)return;
+  const p=S.progress||dayProgress();
+  $("sb-fill").style.width=p.pct+"%";
+  $("sb-fill").style.background=p.pct>=100?"var(--ok)":(p.pct>=50?"var(--accent)":"var(--bad)");
+  $("sb-txt").textContent=p.pct+"% · "+p.done+"/"+p.total+" "+t("sarcini complete (bifă + poze)")+(S.busy?" · 🔕 "+t("aglomerat"):"");
+}
 
 let PRODUCTS = PRODUCTS_FALLBACK;
+let MINS = {}; // stoc minim pe produs (col C din Sheet) — sub minim intră pe lista de comandat
+
+function buildOrderList(){
+  const order=[], inv_named={};
+  Object.entries(PRODUCTS).forEach(([cat,items],ci)=>{
+    const active=catActiveToday(cat);
+    // s-a numărat ceva în categoria asta, chiar dacă nu e programată azi?
+    const hasAny=items.some((_,ii)=>{const v=S.inv[ci+"_"+ii];return v!==undefined&&v!=="";});
+    if(!active&&!hasAny)return;       // nici programată, nici numărată → nu apare
+    items.forEach((p,ii)=>{
+      const v=S.inv[ci+"_"+ii];
+      const blank=(v===undefined||v==="");
+      // categoriile zilei: golurile intră cu stoc 0. Categoriile din afara zilei:
+      // raportăm doar ce s-a numărat efectiv, fără zerouri inventate.
+      if(blank&&!active)return;
+      const qty=blank?0:num(v);
+      if(!inv_named[cat])inv_named[cat]=[];
+      const rec={p,qty};
+      if(blank)rec.nc=true;
+      inv_named[cat].push(rec);
+      const min=MINS[cat]&&MINS[cat][p];
+      if(min==null)return;
+      if(qty<min)order.push({cat,p,have:qty,min});
+    });
+  });
+  S.order=order;S.inv_named=inv_named;save();
+}
+/* câte produse din inventarul zilei au rămas necompletate */
+function invMissing(){
+  let miss=0;
+  Object.entries(PRODUCTS).forEach(([cat,items],ci)=>{
+    if(!catActiveToday(cat))return;
+    items.forEach((_,ii)=>{const v=S.inv[ci+"_"+ii];if(v===undefined||v==="")miss++;});
+  });
+  return miss;
+}
 
 /* ============================================================
    UTIL
@@ -389,11 +859,13 @@ function show(id){
 function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1800);}
 function num(v){const n=parseFloat(v);return isNaN(n)?0:n;}
 function fmt(n){return n.toLocaleString("ro-RO",{minimumFractionDigits:2,maximumFractionDigits:2})+" RON";}
-function beep(){try{const a=new(window.AudioContext||window.webkitAudioContext)();const o=a.createOscillator();const g=a.createGain();o.connect(g);g.connect(a.destination);o.frequency.value=880;g.gain.value=.2;o.start();setTimeout(()=>{o.stop();a.close();},500);}catch(e){}}
+function beep(){try{const a=new(window.AudioContext||window.webkitAudioContext)();function tone(f,t0,dur){const o=a.createOscillator();const g=a.createGain();o.connect(g);g.connect(a.destination);o.frequency.value=f;g.gain.setValueAtTime(0,a.currentTime+t0);g.gain.linearRampToValueAtTime(1,a.currentTime+t0+.02);g.gain.setValueAtTime(1,a.currentTime+t0+dur-.04);g.gain.linearRampToValueAtTime(0,a.currentTime+t0+dur);o.start(a.currentTime+t0);o.stop(a.currentTime+t0+dur+.01);}tone(880,0,.18);tone(880,.25,.18);tone(1047,.5,.28);setTimeout(()=>a.close(),1000);}catch(e){}}
 
 /* clock */
 function tick(){const d=new Date();$("clk-t").textContent=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
-  $("clk-d").textContent=d.toLocaleDateString("ro-RO",{weekday:"long",day:"numeric",month:"long"});}
+  $("clk-d").textContent=d.toLocaleDateString(LANG==="en"?"en-GB":"ro-RO",{weekday:"long",day:"numeric",month:"long"});
+  // trecerea pe ziua nouă se face DOAR după închiderea turei (nu la miezul nopții)
+  if(S.date&&S.date!==todayKey()&&S.closed&&!closingInProgress){location.reload();}}
 setInterval(tick,1000);tick();
 
 /* ============================================================
@@ -407,9 +879,23 @@ async function backend(action,payload){
     return await r.json();
   }catch(e){console.warn("backend",action,e);return null;}
 }
+/* Lista de produse vine din Sheet. Valorile din inventar se salvează pe poziția
+   produsului în listă, deci lista trebuie să rămână aceeași toată ziua: dacă
+   backend-ul nu răspunde, folosim ultima listă descărcată, nu cea din cod —
+   altfel cifrele numărate s-ar lipi de alte produse în raport. */
+const PRODUCTS_CACHE_KEY="send_products_v1";
 async function loadProducts(){
   const res=await backend("getProducts",{sheetId:CONFIG.PRODUCTS_SHEET_ID});
-  if(res&&res.products)PRODUCTS=res.products;
+  if(res&&res.products&&Object.keys(res.products).length){
+    PRODUCTS=res.products; MINS=res.mins||{};
+    try{localStorage.setItem(PRODUCTS_CACHE_KEY,JSON.stringify({products:PRODUCTS,mins:MINS}));}catch(e){}
+    return;
+  }
+  try{
+    const raw=localStorage.getItem(PRODUCTS_CACHE_KEY);
+    if(raw){const c=JSON.parse(raw);
+      if(c&&c.products&&Object.keys(c.products).length){PRODUCTS=c.products;MINS=c.mins||{};}}
+  }catch(e){}
 }
 
 /* ============================================================
@@ -448,26 +934,34 @@ function renderMorning(){
   Object.entries(MORNING).forEach(([key,sec])=>{
     if(!sec.zones.some(z=>activeZones().includes(z)))return; // zona fara personal -> nu apare
     const card=document.createElement("div");card.className="card";
-    card.innerHTML='<h3>'+sec.titlu+'</h3>';
+    card.innerHTML='<h3>'+t(sec.titlu)+'</h3>';
+    if(sec.proc1){
+      const links=document.createElement("div");links.style.margin="-2px 0 10px";
+      links.innerHTML='<a class="pill info" href="'+CONFIG.PROC1_RO+'" target="_blank" style="text-decoration:none">📄 Procedura 1 · RO</a> '+
+                      '<a class="pill" href="'+CONFIG.PROC1_EN+'" target="_blank" style="text-decoration:none">EN</a>';
+      card.appendChild(links);
+    }
     sec.items.forEach((it,i)=>{
       const k=key+"_"+i, done=!!S.morning[k];
       const row=document.createElement("div");row.className="chk"+(done?" done":"");
-      row.innerHTML='<div class="box">'+(done?"✓":"")+'</div><div class="lbl">'+it+'</div>';
+      row.innerHTML='<div class="box">'+(done?"✓":"")+'</div><div class="lbl">'+t(it)+'</div>';
       row.onclick=()=>{S.morning[k]=!S.morning[k];save();renderMorning();};
       card.appendChild(row);
-      if(key==="barsala"&&i===0){
-        const links=document.createElement("div");links.style.padding="0 0 6px 38px";
-        links.innerHTML='<a class="pill info" href="'+CONFIG.PROC1_RO+'" target="_blank" style="text-decoration:none">📄 Procedura 1 · RO</a> '+
-                        '<a class="pill" href="'+CONFIG.PROC1_EN+'" target="_blank" style="text-decoration:none">EN</a>';
-        card.appendChild(links);
-      }
     });
     if(sec.text!==undefined){
       const wrap=document.createElement("div");wrap.style.marginTop="8px";
-      wrap.innerHTML='<label>'+sec.text+' (opțional)</label>';
-      const ta=document.createElement("textarea");ta.value=S.morning[key+"_text"]||"";ta.placeholder="Scrie aici...";
+      wrap.innerHTML='<label>'+t(sec.text)+' '+t("(opțional)")+'</label>';
+      const ta=document.createElement("textarea");ta.value=S.morning[key+"_text"]||"";ta.placeholder=t("Scrie aici...");
       ta.oninput=()=>{S.morning[key+"_text"]=ta.value;save();};
       wrap.appendChild(ta);card.appendChild(wrap);
+    }
+    const vRow=document.createElement("div");vRow.style.cssText="display:flex;gap:8px;margin-top:12px";
+    vRow.append(sel(S.team.map(p=>p.name),S.morning[key+"_facut"]||"",t("Făcut de…"),v=>{S.morning[key+"_facut"]=v;save();renderMorning();}),
+                sel(VERIFIERS,S.morning[key+"_verif"]||"",t("Verificat de…"),v=>{S.morning[key+"_verif"]=v;save();renderMorning();}));
+    card.appendChild(vRow);
+    if(S.morning[key+"_facut"]&&S.morning[key+"_facut"]===S.morning[key+"_verif"]){
+      const w=document.createElement("div");w.className="warnline";w.style.marginTop="8px";
+      w.textContent=t("⚠ Verificatorul trebuie să fie altă persoană.");card.appendChild(w);
     }
     c.appendChild(card);
   });
@@ -481,48 +975,157 @@ function morningRequired(){
   });
   return req;
 }
-function morningDone(){return morningRequired().every(k=>S.morning[k]);}
+function morningDone(){
+  if(!morningRequired().every(k=>S.morning[k]))return false;
+  return Object.entries(MORNING).every(([key,sec])=>{
+    if(!sec.zones.some(z=>activeZones().includes(z)))return true;
+    const f=S.morning[key+"_facut"],v=S.morning[key+"_verif"];
+    return f&&v&&f!==v;
+  });
+}
 
 /* ============================================================
    3. DASHBOARD
    ============================================================ */
 function renderDash(){
-  const t=$("dash-team");t.innerHTML="";
+  const tw=$("dash-team");tw.innerHTML="";
   S.team.forEach(p=>{const zl=(ZONES.find(z=>z[0]===p.zone)||["","?"])[1];
-    const s=document.createElement("span");s.className="pill";s.textContent=p.name+" · "+zl;t.appendChild(s);});
-  const pending=REMINDERS.length;
-  $("dash-rem").textContent="🔔 remindere active";
+    const s=document.createElement("span");s.className="pill";s.textContent=p.name+" · "+t(zl);tw.appendChild(s);});
+  const pending=REM.filter(r=>r.active!==false).length;
+  $("dash-rem").textContent="🔔 "+pending+" "+t("remindere active");
+  const uf=$("urgent-field");if(uf)uf.value=S.urgent||"";
+  renderBusyBtn();
+}
+
+/* ============================================================
+   MOD „CAFENEA AGLOMERATĂ" — oprește reminderele cât echipa servește
+   ============================================================ */
+function renderBusyBtn(){
+  const b=$("busy-btn");if(!b)return;
+  if(S.busy){
+    b.textContent="🔕 "+t("Cafenea aglomerată — ACTIV · reminderele sunt oprite");
+    b.style.cssText="width:100%;margin-bottom:8px;background:var(--bad-bg);color:var(--bad);border:1px solid var(--bad);font-weight:600";
+  } else {
+    b.textContent="☕ "+t("Cafenea aglomerată — apasă când echipa e ocupată cu servirea");
+    b.style.cssText="width:100%;margin-bottom:8px;background:var(--surface-2);border:1px solid var(--line);color:var(--ink)";
+  }
+}
+function toggleBusy(){
+  if(!S.busyLog)S.busyLog=[];
+  S.busy=!S.busy;
+  if(S.busy){
+    S.busyLog.push({from:hm(new Date()),to:null});         // intervalul intră în raportul de seară
+    remQueue.length=0;                                      // anulează reminderele din coadă
+    Object.keys(S.remPending).forEach(k=>delete S.remPending[k]); // și pe cele nerezolvate de pe ecran
+    $("rem-overlay").classList.remove("show");remActive=false;
+    toast(t("Remindere oprite — mod aglomerat activ"));
+  } else {
+    const last=S.busyLog[S.busyLog.length-1];
+    if(last&&!last.to)last.to=hm(new Date());
+    toast(t("Remindere pornite din nou"));
+  }
+  save();renderBusyBtn();
 }
 
 /* ============================================================
    4. PAGINA ZILEI
    ============================================================ */
 function renderDay(){
-  const dow=new Date().getDay();
-  $("day-title").textContent="Pagina zilei · "+DAY_NAMES[dow];
+  const dow=shiftDow();
+  $("day-title").textContent=t("Pagina zilei")+" · "+t(DAY_NAMES[dow]);
   const tasks=DAY_TASKS[dow]||[];
   const c=$("day-list");c.innerHTML="";
-  if(!S.day[dow])S.day[dow]=tasks.map(()=>({done:false,photo:false}));
-  tasks.forEach((t,i)=>{
+  if(!S.day[dow])S.day[dow]=tasks.map(()=>({done:false,photo:false,photos:0}));
+  tasks.forEach((task,i)=>{
     const st=S.day[dow][i];
     const row=document.createElement("div");row.style.cssText="display:flex;align-items:center;gap:12px;padding:13px 0;border-top:"+(i?"1px solid var(--line)":"none");
     const chk=document.createElement("div");chk.style.cssText="display:flex;align-items:center;gap:12px;flex:1;cursor:pointer";
-    chk.innerHTML='<div class="box" style="'+(st.done?"background:var(--ok);border-color:var(--ok);color:var(--bg)":"")+'">'+(st.done?"✓":"")+'</div><div class="lbl" style="'+(st.done?"color:var(--ink-dim);text-decoration:line-through":"")+'">'+t+'</div>';
+    chk.innerHTML='<div class="box" style="'+(st.done?"background:var(--ok);border-color:var(--ok);color:var(--bg)":"")+'">'+(st.done?"✓":"")+'</div><div class="lbl" style="'+(st.done?"color:var(--ink-dim);text-decoration:line-through":"")+'">'+t(task)+'</div>';
     chk.onclick=()=>{st.done=!st.done;save();renderDay();};
-    const ph=makePhotoBtn(st.photo,()=>{st.photo=true;save();renderDay();},"Pagina zilei",t);
+    const ph=makePhotoBtn(st.photos||(st.photo?1:0),n=>{st.photos=n;st.photo=n>0;save();renderDay();},"Pagina zilei",task);
     row.appendChild(chk);row.appendChild(ph);c.appendChild(row);
   });
 }
-function makePhotoBtn(has,onpick,fereastra,categorie){
-  const lbl=document.createElement("label");lbl.className="photo"+(has?" has":"");
-  lbl.innerHTML=(has?"✓ Poză":"📷 Poză");
-  const inp=document.createElement("input");inp.type="file";inp.accept="image/*";inp.capture="environment";inp.style.display="none";
+/* buton de poză — până la 5 poze per sarcină; contorul apare pe buton */
+const MAX_PHOTOS=5;
+function makePhotoBtn(count,onpick,fereastra,categorie){
+  count=count===true?1:(count||0);
+  const wrap=document.createElement("span");wrap.style.display="inline-block";
+  const btn=document.createElement("button");btn.type="button";
+  const inp=document.createElement("input");inp.type="file";inp.accept="image/*";inp.capture="environment";
+  inp.style.cssText="position:absolute;width:0;height:0;opacity:0;pointer-events:none";
+  function paint(){
+    btn.className="photo"+(count>0?" has":"");
+    btn.textContent=count<=0?t("📷 Poză"):("✓ "+count+"/"+MAX_PHOTOS+(count<MAX_PHOTOS?" · 📷":""));
+    btn.disabled=count>=MAX_PHOTOS;
+  }
   inp.onchange=()=>{const f=inp.files[0];if(!f)return;
-    const rd=new FileReader();rd.onload=()=>{uploadPhoto(rd.result,fereastra,categorie);onpick();};rd.readAsDataURL(f);};
-  lbl.appendChild(inp);return lbl;
+    const rd=new FileReader();rd.onload=()=>{uploadPhoto(rd.result,fereastra,categorie);count++;paint();onpick(count);};rd.readAsDataURL(f);
+    inp.value="";};
+  btn.onclick=()=>{if(count<MAX_PHOTOS)inp.click();};
+  paint();
+  wrap.append(btn,inp);return wrap;
 }
 function uploadPhoto(dataUrl,fereastra,categorie){
   backend("uploadPhoto",{photo:dataUrl,fereastra,categorie});
+}
+
+/* ============================================================
+   RECEPȚIE MARFĂ
+   ============================================================ */
+let recDraft={};
+function renderReceptie(){
+  recDraft={cine:"",furnizor:"",cantitate:"",stare:"",photo:false,photos:0,obs:""};
+  const cine=$("rec-cine");cine.innerHTML="";
+  cine.appendChild(sel(S.team.map(p=>p.name),"",t("Alege persoana..."),v=>recDraft.cine=v));
+  const fz=$("rec-furnizor");fz.value="";fz.oninput=()=>recDraft.furnizor=fz.value;
+  yesNo("rec-cant",recDraft.cantitate,v=>recDraft.cantitate=v);
+  yesNo("rec-stare",recDraft.stare,v=>recDraft.stare=v);
+  const pr=$("rec-photo-row");pr.innerHTML="";
+  pr.appendChild(makePhotoBtn(0,n=>{recDraft.photos=n;recDraft.photo=n>0;},"Recepție marfă",fz.value||"Aviz"));
+  const ob=$("rec-obs");ob.value="";ob.oninput=()=>recDraft.obs=ob.value;
+  renderRecList();
+}
+function yesNo(id,picked,onPick){
+  const wrap=$(id);wrap.innerHTML="";
+  const opts=[["Da","ok"],["Nu","bad"]];
+  function paint(){
+    wrap.querySelectorAll("button").forEach((b,i)=>{
+      const[v,c]=opts[i];
+      b.style.cssText="font-weight:600;"+(picked===v
+        ?"background:var(--"+c+"-bg);color:var(--"+c+");border:1px solid var(--"+c+")"
+        :"background:var(--surface-2);border:1px solid var(--line);color:var(--ink-dim)");
+    });
+  }
+  opts.forEach(([v])=>{
+    const b=document.createElement("button");b.textContent=t(v);
+    b.onclick=()=>{picked=v;onPick(v);paint();};
+    wrap.appendChild(b);
+  });
+  paint();
+}
+function saveReceptie(){
+  if(!recDraft.cine){toast(t("Alege cine a recepționat marfa."));return;}
+  if(!recDraft.cantitate||!recDraft.stare){toast(t("Răspunde la ambele întrebări Da/Nu."));return;}
+  const rec={...recDraft,time:hm(new Date())};
+  S.receptii.push(rec);save();
+  backend("saveReceptie",{receptie:rec});
+  toast(t("Recepție salvată."));
+  renderReceptie();
+}
+function renderRecList(){
+  const c=$("rec-list");c.innerHTML="";
+  if(!S.receptii.length)return;
+  const card=document.createElement("div");card.className="card";
+  card.innerHTML="<h3>"+t("Recepții azi")+"</h3>";
+  S.receptii.forEach(r=>{
+    const probleme=(r.cantitate==="Nu"||r.stare==="Nu");
+    const row=document.createElement("div");row.className="row";
+    row.innerHTML='<span>'+r.time+' — '+(r.furnizor||"—")+' · '+r.cine+'</span>'+
+                  (probleme?'<span class="pill warn">'+t("⚠ verifică")+'</span>':'<span class="pill ok">'+t("✓ ok")+'</span>');
+    card.appendChild(row);
+  });
+  c.appendChild(card);
 }
 
 /* ============================================================
@@ -532,12 +1135,25 @@ let invExpanded={};
 function renderInventory(){
   const term=($("inv-search").value||"").trim().toLowerCase();
   const c=$("inv-list");c.innerHTML="";let total=0,counted=0;
+  // subtitlu cu ziua inventarului
+  const dayLabel=$("inv-day-label");
+  if(dayLabel){
+    const cats=Object.keys(PRODUCTS).filter(catActiveToday);
+    const allCats=Object.keys(PRODUCTS);
+    if(cats.length<allCats.length)
+      dayLabel.textContent=t("Azi:")+" "+cats.join(", ");
+    else
+      dayLabel.textContent="";
+  }
   Object.entries(PRODUCTS).forEach(([cat,items],ci)=>{
+    const active=catActiveToday(cat);
     const matches=items.map((it,ii)=>({it,ii})).filter(o=>!term||o.it.toLowerCase().includes(term));
-    items.forEach((_,ii)=>{total++;const k=ci+"_"+ii;if(S.inv[k]!==undefined&&S.inv[k]!=="")counted++;});
+    if(active){items.forEach((_,ii)=>{total++;const k=ci+"_"+ii;if(S.inv[k]!==undefined&&S.inv[k]!=="")counted++;});}
+    if(!active&&!term)return;        // ascunde categoria dacă nu e ziua ei (afară de căutare)
     if(term&&!matches.length)return;
     const open=term?true:!!invExpanded[ci]||ci===0&&!Object.keys(invExpanded).length;
     const acc=document.createElement("div");acc.className="acc";
+    if(!active)acc.style.opacity="0.4"; // în căutare apare estompat
     let cc=0;items.forEach((_,ii)=>{const k=ci+"_"+ii;if(S.inv[k]!==undefined&&S.inv[k]!=="")cc++;});
     const head=document.createElement("div");head.className="acc-head";
     head.innerHTML='<span style="font-weight:500">'+cat+'</span><span class="muted">'+cc+"/"+items.length+(open?" ▲":" ▼")+'</span>';
@@ -557,10 +1173,10 @@ function renderInventory(){
     c.appendChild(acc);
   });
   $("inv-prog").textContent=counted+"/"+total;
+  const cb=$("inv-cancel");if(cb)cb.style.display=inClosing()?"block":"none";
   gateFor("s-inv");
 }
-function updateInvProg(){let total=0,counted=0;Object.entries(PRODUCTS).forEach(([cat,items],ci)=>{items.forEach((_,ii)=>{total++;const k=ci+"_"+ii;if(S.inv[k]!==undefined&&S.inv[k]!=="")counted++;});});$("inv-prog").textContent=counted+"/"+total;gateFor("s-inv");}
-function invDone(){let total=0,counted=0;Object.entries(PRODUCTS).forEach(([c,items],ci)=>{items.forEach((_,ii)=>{total++;const k=ci+"_"+ii;if(S.inv[k]!==undefined&&S.inv[k]!=="")counted++;});});return total>0&&counted===total;}
+function updateInvProg(){let total=0,counted=0;Object.entries(PRODUCTS).forEach(([cat,items],ci)=>{if(!catActiveToday(cat))return;items.forEach((_,ii)=>{total++;const k=ci+"_"+ii;if(S.inv[k]!==undefined&&S.inv[k]!=="")counted++;});});$("inv-prog").textContent=counted+"/"+total;gateFor("s-inv");}
 
 /* ============================================================
    6. CONSUM & PIERDERI
@@ -568,15 +1184,15 @@ function invDone(){let total=0,counted=0;Object.entries(PRODUCTS).forEach(([c,it
 function renderLoss(){
   // consum
   let c=$("loss-consum");c.innerHTML="";
-  S.loss.consum.forEach((r,i)=>{const row=lossRow(["Produs","Cant."],[r.p,r.c],(v0,v1)=>{r.p=v0;r.c=v1;save();},()=>{S.loss.consum.splice(i,1);if(!S.loss.consum.length)S.loss.consum.push({p:"",c:""});renderLoss();});c.appendChild(row);});
+  S.loss.consum.forEach((r,i)=>{const row=lossRow([t("Produs"),t("Cant.")],[r.p,r.c],(v0,v1)=>{r.p=v0;r.c=v1;save();},()=>{S.loss.consum.splice(i,1);if(!S.loss.consum.length)S.loss.consum.push({p:"",c:""});renderLoss();});c.appendChild(row);});
   // pahare chips
   const ch=$("glass-chips");ch.innerHTML="";
   GLASS_TYPES.forEach(g=>{const b=document.createElement("button");b.className="btn-ghost";b.style.cssText="padding:6px 10px;font-size:12px";b.textContent="+ "+g;
     b.onclick=()=>{const last=S.loss.pahare[S.loss.pahare.length-1];if(last&&!last.t&&!last.n)last.t=g;else S.loss.pahare.push({t:g,n:""});renderLoss();};ch.appendChild(b);});
   c=$("loss-pahare");c.innerHTML="";
-  S.loss.pahare.forEach((r,i)=>{const row=lossRow(["Tip pahar","Câte"],[r.t,r.n],(v0,v1)=>{r.t=v0;r.n=v1;save();},()=>{S.loss.pahare.splice(i,1);if(!S.loss.pahare.length)S.loss.pahare.push({t:"",n:""});renderLoss();});c.appendChild(row);});
+  S.loss.pahare.forEach((r,i)=>{const row=lossRow([t("Tip pahar"),t("Câte")],[r.t,r.n],(v0,v1)=>{r.t=v0;r.n=v1;save();},()=>{S.loss.pahare.splice(i,1);if(!S.loss.pahare.length)S.loss.pahare.push({t:"",n:""});renderLoss();});c.appendChild(row);});
   c=$("loss-alte");c.innerHTML="";
-  S.loss.alte.forEach((r,i)=>{const row=lossRow(["Descriere pierdere","Cant."],[r.d,r.c],(v0,v1)=>{r.d=v0;r.c=v1;save();},()=>{S.loss.alte.splice(i,1);if(!S.loss.alte.length)S.loss.alte.push({d:"",c:""});renderLoss();});c.appendChild(row);});
+  S.loss.alte.forEach((r,i)=>{const row=lossRow([t("Descriere pierdere"),t("Cant.")],[r.d,r.c],(v0,v1)=>{r.d=v0;r.c=v1;save();},()=>{S.loss.alte.splice(i,1);if(!S.loss.alte.length)S.loss.alte.push({d:"",c:""});renderLoss();});c.appendChild(row);});
 }
 function lossRow(ph,vals,onin,ondel){
   const row=document.createElement("div");row.style.cssText="display:flex;gap:8px;margin-bottom:8px;align-items:center";
@@ -592,13 +1208,32 @@ function lossDone(){return true;} // completarea e liberă; poarta cere doar tre
 /* ============================================================
    7. RECONCILIERE CASĂ
    ============================================================ */
+function diffPill(elId,rawInput,calc,label){
+  const el=$(elId);
+  if(rawInput===""){el.innerHTML="";return null;}
+  const given=num(rawInput),diff=given-calc;
+  if(Math.abs(diff)<0.01) el.innerHTML='<span class="pill ok">✓ '+t(label)+' — '+t("corespunde")+'</span>';
+  else el.innerHTML='<span class="pill warn">⚠ '+t(label)+' — '+t("diferență")+' '+(diff>0?"+":"")+fmt(diff)+'</span>';
+  return given;
+}
 function calcCash(){
   const cash=num($("z_cash").value),card=num($("z_card").value),ialoc=num($("z_ialoc").value);
   const ztot=cash+card+ialoc;$("z_total").textContent=fmt(ztot);
+  const zPrinted=diffPill("z_check",$("z_printed").value,ztot,"Z calculat vs. printat");
   const sp=num($("sold_prev").value);const valc=sp+cash;$("val_cash").textContent=fmt(valc);
   const pc=num($("plati_cash").value);const sf=valc-pc;$("sold_final").textContent=fmt(sf);
-  S.cash={cash,card,ialoc,ztot,soldPrev:sp,valCash:valc,platiCash:pc,soldFinal:sf};save();
+  const counted=diffPill("cash_check",$("cash_counted").value,sf,"Numărat fizic vs. sold final");
+  S.cash={cash,card,ialoc,ztot,zPrinted,soldPrev:sp,valCash:valc,platiCash:pc,soldFinal:sf,
+          cashCounted:counted,notes:$("cash_notes").value};
+  // păstrăm și textul brut din câmpuri, ca ecranul să se refacă identic după refresh
+  S.cashRaw={};CASH_FIELDS.forEach(id=>{const el=$(id);if(el)S.cashRaw[id]=el.value;});
+  save();
   gateFor("s-cash");
+}
+const CASH_FIELDS=["z_cash","z_card","z_ialoc","z_printed","sold_prev","plati_cash","cash_counted","cash_notes"];
+function fillCash(){
+  if(S.cashRaw)CASH_FIELDS.forEach(id=>{const el=$(id);if(el&&S.cashRaw[id]!==undefined)el.value=S.cashRaw[id];});
+  calcCash();
 }
 function cashDone(){const k=S.cash;return k&&($("z_cash").value!==""||$("z_card").value!==""||$("z_ialoc").value!=="")&&$("sold_prev").value!=="";}
 
@@ -608,18 +1243,18 @@ function cashDone(){const k=S.cash;return k&&($("z_cash").value!==""||$("z_card"
 function renderFinal(){
   const c=$("final-list");c.innerHTML="";const teamNames=S.team.map(t=>t.name);
   FINAL_ITEMS.forEach((q,i)=>{
-    if(!S.final[i])S.final[i]={facut:"",verif:"",photo:false};
+    if(!S.final[i])S.final[i]={facut:"",verif:"",photo:false,photos:0};
     const st=S.final[i];
     const card=document.createElement("div");card.className="card";
-    card.innerHTML='<p style="font-weight:500;margin:0 0 10px">'+q+'</p>';
+    card.innerHTML='<p style="font-weight:500;margin:0 0 10px">'+t(q)+'</p>';
     const selRow=document.createElement("div");selRow.style.cssText="display:flex;gap:8px;margin-bottom:10px";
-    selRow.append(sel(teamNames,st.facut,"Făcut de…",v=>{st.facut=v;save();renderFinal();}),
-                  sel(teamNames,st.verif,"Verificat de…",v=>{st.verif=v;save();renderFinal();}));
+    selRow.append(sel(teamNames,st.facut,t("Făcut de…"),v=>{st.facut=v;save();renderFinal();}),
+                  sel(teamNames,st.verif,t("Verificat de…"),v=>{st.verif=v;save();renderFinal();}));
     card.appendChild(selRow);
     const bottom=document.createElement("div");bottom.style.cssText="display:flex;align-items:center;gap:10px;flex-wrap:wrap";
-    bottom.appendChild(makePhotoBtn(st.photo,()=>{st.photo=true;save();renderFinal();},"Checklist final",q.slice(0,20)));
-    if(st.facut&&st.verif&&st.facut===st.verif){const w=document.createElement("span");w.className="warnline";w.textContent="⚠ Verificatorul trebuie să fie altă persoană.";bottom.appendChild(w);}
-    else if(finalItemOk(i)){const o=document.createElement("span");o.className="pill ok";o.textContent="✓ Gata";bottom.appendChild(o);}
+    bottom.appendChild(makePhotoBtn(st.photos||(st.photo?1:0),n=>{st.photos=n;st.photo=n>0;save();renderFinal();},"Checklist final",q.slice(0,20)));
+    if(st.facut&&st.verif&&st.facut===st.verif){const w=document.createElement("span");w.className="warnline";w.textContent=t("⚠ Verificatorul trebuie să fie altă persoană.");bottom.appendChild(w);}
+    else if(finalItemOk(i)){const o=document.createElement("span");o.className="pill ok";o.textContent=t("✓ Gata");bottom.appendChild(o);}
     card.appendChild(bottom);c.appendChild(card);
   });
   gateFor("s-final");
@@ -636,12 +1271,14 @@ function finalDone(){return FINAL_ITEMS.every((_,i)=>finalItemOk(i));}
 function gateFor(id){
   const gate=$("gate"),btn=$("gate-btn"),msg=$("gate-msg");
   const map={
-    "s-staff":{ok:()=>S? Object.values(staffState).some(s=>s.on&&s.zone):false, lock:"Selectează cine lucrează și zona.", open:"Gata — pornește.", label:"Continuă"},
-    "s-morning":{ok:morningDone, lock:"Bifează tot pentru a porni tura.", open:"Totul bifat — poți începe.", label:"Începe tura"},
-    "s-inv":{ok:invDone, lock:"Numără tot inventarul.", open:"Inventar complet.", label:"Continuă"},
-    "s-loss":{ok:lossDone, lock:"", open:"Completat.", label:"Continuă"},
-    "s-cash":{ok:cashDone, lock:"Completează raportul Z și soldul precedent.", open:"Casă reconciliată.", label:"Continuă"},
-    "s-final":{ok:finalDone, lock:"Completează tot, verificat în doi.", open:"Verificat în doi — închide tura.", label:"Trimite & închide"}
+    "s-staff":{ok:()=>S? Object.values(staffState).some(s=>s.on&&s.zone):false, lock:t("Selectează cine lucrează și zona."), open:t("Gata — pornește."), label:t("Continuă")},
+    "s-morning":{ok:morningDone, lock:t("Bifează tot și alege cine a făcut + cine a verificat."), open:t("Totul bifat și verificat — poți începe."), label:t("Începe tura")},
+    "s-inv":inClosing()
+      ? {ok:()=>true, lock:"", open:invGateMsg(), label:t("Continuă")}
+      : {ok:()=>true, lock:"", open:t("Progresul se salvează automat."), label:t("← Înapoi")},
+    "s-loss":{ok:lossDone, lock:"", open:t("Completat."), label:t("Continuă")},
+    "s-cash":{ok:cashDone, lock:t("Completează raportul Z și soldul precedent."), open:t("Casă reconciliată."), label:t("Continuă")},
+    "s-final":{ok:finalDone, lock:t("Completează tot, verificat în doi."), open:t("Verificat în doi — închide tura."), label:t("Trimite & închide")}
   };
   if(!map[id]){gate.style.display="none";return;}
   gate.style.display="flex";
@@ -649,7 +1286,29 @@ function gateFor(id){
   btn.disabled=!ok;btn.textContent=g.label;
   gate.classList.toggle("locked",!ok);gate.classList.toggle("open",ok);
   msg.textContent=ok?g.open:g.lock;
+  // inventar incomplet la închidere: se poate continua, dar mesajul e de avertizare
+  if(id==="s-inv"&&inClosing()&&invMissing()>0){
+    gate.classList.add("locked");gate.classList.remove("open");
+  }
+  // în închidere se poate merge înapoi (ex. la stoc), dar nu se poate sări înainte
+  const back=$("gate-back");
+  if(back)back.style.display=(inClosing()&&S.phase!=="inv"&&id===phaseScreen(S.phase))?"block":"none";
   gate.dataset.screen=id;
+}
+function phaseScreen(ph){return {inv:"s-inv",loss:"s-loss",cash:"s-cash",final:"s-final"}[ph]||"";}
+/* un pas înapoi în fluxul de închidere — datele completate rămân salvate */
+function gateBack(){
+  const prev={loss:"inv",cash:"loss",final:"cash"}[S.phase];
+  if(!prev)return;
+  S.phase=prev;save();
+  if(prev==="inv"){renderInventory();show("s-inv");}
+  else if(prev==="loss"){renderLoss();show("s-loss");}
+  else if(prev==="cash"){show("s-cash");fillCash();}
+}
+function invGateMsg(){
+  const n=invMissing();
+  return n? "⚠ "+n+" "+t("produse necompletate — intră în raport cu stoc 0")
+          : t("Inventar complet.");
 }
 function gateAction(){
   const id=$("gate").dataset.screen;
@@ -662,93 +1321,332 @@ function gateAction(){
     S.started=true;save();backend("saveMorning",{morning:S.morning});
     renderDash();renderDay();show("s-dash");startReminders();
   }
-  else if(id==="s-inv"){ backend("saveInventory",{inv:S.inv}); renderLoss();show("s-loss"); }
-  else if(id==="s-loss"){ backend("saveLosses",{loss:S.loss}); show("s-cash");calcCash(); }
-  else if(id==="s-cash"){ backend("saveCash",{cash:S.cash}); renderFinal();show("s-final"); }
+  else if(id==="s-inv"){ buildOrderList(); backend("saveInventory",{inv:S.inv,order:S.order});
+    if(inClosing()){ S.phase="loss";save(); renderLoss();show("s-loss"); }
+    else show("s-dash"); }
+  else if(id==="s-loss"){ S.phase="cash";save(); backend("saveLosses",{loss:S.loss}); show("s-cash");fillCash(); }
+  else if(id==="s-cash"){ S.phase="final";save(); backend("saveCash",{cash:S.cash}); renderFinal();show("s-final"); }
   else if(id==="s-final"){ closeShift(); }
 }
 
 /* ============================================================
    ÎNCHIDERE TURĂ
    ============================================================ */
+/* Închiderea poate fi începută oricând, dar odată pornită nu se mai poate sări:
+   etapa curentă se ține în S.phase, deci un refresh readuce exact același ecran.
+   Ordinea: Inventar → Consum & pierderi → Casă → Checklist final. */
+const CLOSING_PHASES=["inv","loss","cash","final"];
+function inClosing(){return CLOSING_PHASES.includes(S.phase);}
 function startClosing(){
-  const h=new Date().getHours();
-  if(h<22){toast("Închiderea e disponibilă de la 22:00");return;}
+  S.phase="inv";save();
+  renderInventory();show("s-inv");
+}
+/* singura ieșire din închidere — doar din prima etapă, ca o apăsare din greșeală
+   să nu blocheze tura în fluxul de închidere */
+function cancelClosing(){
+  S.phase="";save();
+  renderDash();show("s-dash");
+  toast(t("Închidere anulată."));
+}
+/* stocurile se pot completa și în timpul zilei, din dashboard */
+function openInventory(){
   renderInventory();show("s-inv");
 }
 async function closeShift(){
-  S.closed=true;S.phase="closed";save();
+  closingInProgress=true;
+  if(S.busy){const last=(S.busyLog||[])[(S.busyLog||[]).length-1];if(last&&!last.to)last.to=hm(new Date());S.busy=false;}
+  S.closed=true;S.phase="closed";buildOrderList();save();
   await backend("saveFinal",{final:S.final});
   await backend("sendEmail",{state:S});
-  toast("Tura închisă · raport trimis");
-  $("gate").style.display="none";$("nav").style.display="none";
-  setTimeout(()=>{$("s-final").innerHTML='<div style="text-align:center;padding:60px 20px"><div style="font-size:54px">✓</div><h2 class="title" style="margin-top:14px">Tură închisă</h2><p class="sub">Raportul a fost trimis. Mulțumesc.</p></div>';},400);
+  try{localStorage.removeItem("send_active_day");}catch(e){} // ziua următoare pornește curat
+  closingInProgress=false;
+  toast(t("Tura închisă · raport trimis"));
+  $("gate").style.display="none";$("nav").style.display="none";$("statusbar").style.display="none";
+  setTimeout(()=>{$("s-final").innerHTML='<div style="text-align:center;padding:60px 20px"><div style="font-size:54px">✓</div><h2 class="title" style="margin-top:14px">'+t("Tură închisă")+'</h2><p class="sub">'+t("Raportul a fost trimis. Mulțumesc.")+'</p></div>';},400);
 }
 
 /* ============================================================
    REMINDERE (în aplicație, cât tableta e pe app)
    ============================================================ */
 let remTimer=null, remFired={}, remQueue=[], remActive=false;
-function startReminders(){ if(remTimer)return; remTimer=setInterval(remCheck,30000); remCheck(); }
+function startReminders(){ if(remTimer)return;
+  // ține minte sarcina săptămânală a zilei — emailul de seară avertizează dacă nu a fost confirmată
+  const dow=shiftDow();
+  const wt=REM.find(r=>r.type==="verify"&&r.active!==false&&(!r.days||r.days.includes(dow)));
+  if(wt&&S.weeklyTask!==wt.t){S.weeklyTask=wt.t;save();}
+  // reminderele fără răspuns (rămase din sesiunea precedentă / refresh) reapar
+  let cleaned=false;
+  Object.entries(S.remPending).forEach(([key,p])=>{
+    const r=REM.find(x=>x.id===p.id);
+    if(!r||r.active===false||(r.type==="verify"&&S.remDone[r.id])){delete S.remPending[key];cleaned=true;return;}
+    remFired[key]=true;
+    if(!remQueue.some(q=>q.id===r.id))remQueue.push(r);
+  });
+  if(cleaned)save();
+  remTimer=setInterval(remCheck,30000);
+  // arată imediat primul reminder nerezolvat fără să aștepte remCheck
+  if(!remActive&&remQueue.length) showReminder(remQueue.shift());
+  else remCheck(); }
 function hm(d){return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");}
 function remCheck(){
-  const d=new Date(),now=hm(d),dow=d.getDay(),h=d.getHours(),m=d.getMinutes();
-  REMINDERS.forEach(r=>{
+  const d=new Date(),now=hm(d),dow=shiftDow(),h=d.getHours(),m=d.getMinutes();
+  // mod „cafenea aglomerată": nu apare niciun reminder; avertizarea de închidere (23:50+) rămâne
+  if(S.busy){closingWindowCheck(d);if(!remActive&&remQueue.length)showReminder(remQueue.shift());return;}
+  REM.forEach(r=>{
+    if(r.active===false)return;
     if(r.days&&!r.days.includes(dow))return;
+    if(r.type==="verify"&&S.remDone[r.id])return; // confirmată azi — nu mai apare
     let fire=false;
     if(r.times&&r.times.includes(now))fire=true;
     if(r.interval&&h>=r.from&&h<r.to&&(h*60+m)%r.interval===0)fire=true;
     const key=r.id+"_"+now;
-    if(fire&&!remFired[key]){remFired[key]=true;remQueue.push(r);}
+    if(fire&&!remFired[key]){remFired[key]=true;
+      S.remPending[key]={id:r.id,t:r.t,time:now};save();  // persistă — la refresh reapare; textul intră în raportul de seară
+      remQueue.push(r);}
   });
   closingWindowCheck(d);
   if(!remActive&&remQueue.length)showReminder(remQueue.shift());
 }
-let emailSent=false;
 function closingWindowCheck(d){
   if(S.closed)return;
   const now=hm(d);
-  // reminder „închide tura" din 2 în 2 min între 23:50 și 23:56
+  // reminder „închide tura" din 2 în 2 min între 23:50 și 23:56 — doar avertizare;
+  // tura se închide și emailul pleacă DOAR la apăsarea butonului
   if(["23:50","23:52","23:54","23:56"].includes(now)){
     const key="close_"+now;
     if(!remFired[key]){remFired[key]=true;
-      remQueue.push({id:"close",t:"Închide tura — raportul pleacă la 23:58!",type:"done",zone:"Toți",sound:true});}
+      remQueue.push({id:"close",t:"Nu uita să închizi tura!",type:"done",zone:"Toți",sound:true});}
   }
-  // trimitere automată la 23:58, chiar dacă nu s-a apăsat
-  if(now==="23:58"&&!emailSent){emailSent=true;S._emailSent=true;save();
-    backend("sendEmail",{state:S});toast("Raport trimis automat (23:58)");}
 }
 function showReminder(r){
   remActive=true;
-  $("rem-ic").textContent=r.type==="yesno"?"❓":r.type==="photo"?"📷":"🔔";
+  $("rem-ic").textContent=r.type==="yesno"?"❓":r.type==="photo"?"📷":r.type==="verify"?"🧽":"🔔";
   $("rem-time").textContent="REMINDER · "+hm(new Date());
-  $("rem-title").textContent=r.t;
-  $("rem-zone").textContent=r.zone;
+  $("rem-title").textContent=t(r.t);
+  $("rem-zone").textContent=t(r.zone);
   const act=$("rem-actions");act.innerHTML="";
-  function done(resp){ S.remLog.push({id:r.id,t:r.t,resp,time:hm(new Date())}); save();
-    backend("saveReminder",{id:r.id,resp,time:hm(new Date())});
+  function done(resp,extra){ S.remLog.push(Object.assign({id:r.id,t:r.t,resp,time:hm(new Date())},extra||{}));
+    Object.keys(S.remPending).forEach(k=>{if(S.remPending[k].id===r.id)delete S.remPending[k];}); save();
+    backend("saveReminder",Object.assign({id:r.id,resp,time:hm(new Date())},extra||{}));
     $("rem-overlay").classList.remove("show");remActive=false;
     if(remQueue.length)setTimeout(()=>showReminder(remQueue.shift()),400); }
   if(r.type==="yesno"){
     const row=document.createElement("div");row.className="btn-row";
-    const da=document.createElement("button");da.textContent="Da";da.style.cssText="background:var(--bad-bg);color:var(--bad)";
-    const nu=document.createElement("button");nu.textContent="Nu";nu.style.cssText="background:var(--ok-bg);color:var(--ok)";
+    const da=document.createElement("button");da.textContent=t("Da");da.style.cssText="background:var(--bad-bg);color:var(--bad)";
+    const nu=document.createElement("button");nu.textContent=t("Nu");nu.style.cssText="background:var(--ok-bg);color:var(--ok)";
     da.onclick=()=>done("Da");nu.onclick=()=>done("Nu");row.append(da,nu);act.appendChild(row);
   } else if(r.type==="photo"){
-    const p="<p class='muted' style='margin:0 0 12px'>La „Da”, fă poză pentru: bar, bucătărie, terasă, interior, baie.</p>";
-    act.innerHTML=p;
-    const b=document.createElement("button");b.className="btn-primary";b.textContent="Deschide verificarea";
-    b.onclick=()=>{done("ok");toast("Fă pozele în secțiunea de curățenie");};
-    act.appendChild(b);
+    const zones=r.zones||["Bar","Bucătărie","Terasă","Interior","Baie"];
+    const lbl=document.createElement("p");lbl.className="muted";lbl.style.cssText="margin:0 0 10px;font-size:0.9em";
+    lbl.textContent=t("Fă poze pentru fiecare zonă:");act.appendChild(lbl);
+    const grid=document.createElement("div");grid.style.cssText="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px";
+    zones.forEach(z=>{
+      const w=makePhotoBtn(0,n=>{
+        const b=w.querySelector("button");b.className="photo has";b.textContent="\u2713 "+t(z)+" ("+n+"/"+MAX_PHOTOS+")";
+      },"Reminder_"+r.id,z);
+      w.querySelector("button").textContent="\ud83d\udcf7 "+t(z);
+      grid.appendChild(w);
+    });
+    act.appendChild(grid);
+    const gata=document.createElement("button");gata.className="btn-primary";gata.textContent=t("Gata");
+    gata.onclick=()=>done("fotografiat");act.appendChild(gata);
+  } else if(r.type==="verify"){
+    let facut="",verif="";
+    const selRow=document.createElement("div");selRow.style.cssText="display:flex;gap:8px;margin-bottom:10px";
+    const warn=document.createElement("div");warn.className="warnline";warn.style.cssText="display:none;margin-bottom:10px";
+    warn.textContent=t("⚠ Verificatorul trebuie să fie altă persoană.");
+    const row=document.createElement("div");row.className="btn-row";
+    const later=document.createElement("button");later.className="btn-ghost";later.textContent=t("Mai târziu");
+    const ok=document.createElement("button");ok.className="btn-primary";ok.textContent=t("Confirmă");ok.disabled=true;
+    function upd(){const same=facut&&verif&&facut===verif;warn.style.display=same?"block":"none";
+      ok.disabled=!(facut&&verif&&facut!==verif);}
+    selRow.append(sel(S.team.map(p=>p.name),"",t("Făcut de…"),v=>{facut=v;upd();}),
+                  sel(VERIFIERS,"",t("Verificat de…"),v=>{verif=v;upd();}));
+    later.onclick=()=>{$("rem-overlay").classList.remove("show");remActive=false;
+      if(remQueue.length)setTimeout(()=>showReminder(remQueue.shift()),400);};
+    ok.onclick=()=>{S.remDone[r.id]=true;done("făcut",{facut,verif});};
+    row.append(later,ok);act.append(selRow,warn,row);
   } else {
     const row=document.createElement("div");row.className="btn-row";
-    const sn=document.createElement("button");sn.className="btn-ghost";sn.textContent="Amână 10 min";
-    const ok=document.createElement("button");ok.className="btn-primary";ok.textContent="Am făcut";ok.style.width="auto";
+    const sn=document.createElement("button");sn.className="btn-ghost";sn.textContent=t("Amână 10 min");
+    const ok=document.createElement("button");ok.className="btn-primary";ok.textContent=t("Am făcut");ok.style.width="auto";
     sn.onclick=()=>{$("rem-overlay").classList.remove("show");remActive=false;setTimeout(()=>{remQueue.push(r);},600000);};
     ok.onclick=()=>done("făcut");row.append(sn,ok);act.appendChild(row);
   }
   $("rem-overlay").classList.add("show");
   if(r.sound)beep();
+}
+
+/* ============================================================
+   ACCES MANAGER (PIN) + EDITARE REMINDERE
+   ============================================================ */
+let pinCallback=null;
+function askManagerPin(onSuccess){
+  pinCallback=onSuccess;
+  $("pin-input").value="";
+  $("pin-error").style.display="none";
+  $("pin-overlay").classList.add("show");
+  setTimeout(()=>$("pin-input").focus(),50);
+}
+function closePinModal(){ $("pin-overlay").classList.remove("show"); pinCallback=null; }
+async function submitPin(){
+  const pin=$("pin-input").value.trim();
+  if(!pin)return;
+  if(!CONFIG.BACKEND_URL){
+    toast(t("Fără backend configurat — accesul manager nu e protejat de PIN."));
+    const cb=pinCallback;closePinModal();if(cb)cb();
+    return;
+  }
+  const res=await backend("verifyPin",{pin});
+  if(res&&res.valid){ const cb=pinCallback;closePinModal();if(cb)cb(); }
+  else { $("pin-error").style.display="block"; }
+}
+function openAdminGate(){
+  askManagerPin(()=>{ renderAdminReminders(); show("s-admin"); });
+}
+function selKV(pairs,val,ph,on){const s=document.createElement("select");s.style.flex="1";
+  s.innerHTML=(ph?'<option value="">'+ph+'</option>':"")+pairs.map(([v,l])=>'<option value="'+v+'"'+(v===val?" selected":"")+'>'+l+'</option>').join("");
+  s.onchange=()=>on(s.value);return s;}
+
+let delConfirm={}, resetConfirm=false;
+function resetRemindersGate(){
+  if(resetConfirm){
+    REM=JSON.parse(JSON.stringify(REMINDERS));
+    persistReminders();resetConfirm=false;
+    renderAdminReminders();renderDash();toast(t("Remindere resetate la implicit."));
+  } else {
+    resetConfirm=true;
+    toast(t("Apasă din nou pentru confirmare."));
+    setTimeout(()=>{resetConfirm=false;},3000);
+  }
+}
+function renderAdminReminders(){
+  const c=$("admin-rem-list");c.innerHTML="";
+  if(!REM.length){c.innerHTML='<p class="muted">'+t("Niciun reminder momentan.")+'</p>';return;}
+  REM.forEach((r,i)=>{
+    const off=r.active===false;
+    const sch=r.times?r.times.join(", "):(t("la fiecare")+" "+r.interval+" "+t("min")+", "+String(r.from).padStart(2,"0")+":00–"+String(r.to).padStart(2,"0")+":00");
+    const days=r.days&&r.days.length?r.days.map(d=>t(DAY_NAMES[d]).slice(0,3)).join(", "):t("zilnic");
+    const card=document.createElement("div");card.className="card";
+    card.innerHTML='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">'+
+      '<div><div style="font-weight:600">'+t(r.t)+'</div>'+
+      '<div class="muted" style="font-size:12px;margin-top:3px">'+t(r.zone)+' · '+sch+' · '+days+'</div></div>'+
+      '<span class="pill '+(off?"bad":"ok")+'" style="flex:none">'+(off?t("Oprit"):t("Activ"))+'</span></div>';
+    const row=document.createElement("div");row.className="btn-row";row.style.marginTop="10px";
+    const tgl=document.createElement("button");tgl.className="btn-ghost";tgl.textContent=off?t("Pornește"):t("Oprește");
+    tgl.onclick=()=>{r.active=off?true:false;persistReminders();renderAdminReminders();renderDash();};
+    const ed=document.createElement("button");ed.className="btn-ghost";ed.textContent=t("Modifică");
+    ed.onclick=()=>openReminderEditor(i);
+    const del=document.createElement("button");del.className="btn-ghost";
+    const confirming=!!delConfirm[r.id];
+    del.textContent=confirming?t("Sigur?"):t("Șterge");
+    if(confirming)del.style.cssText="color:var(--bad);border-color:var(--bad)";
+    del.onclick=()=>{
+      if(delConfirm[r.id]){
+        REM.splice(i,1);persistReminders();delConfirm={};renderAdminReminders();renderDash();toast(t("Reminder șters."));
+      } else {
+        delConfirm={};delConfirm[r.id]=true;renderAdminReminders();
+        setTimeout(()=>{delete delConfirm[r.id];renderAdminReminders();},3000);
+      }
+    };
+    row.append(tgl,ed,del);card.appendChild(row);c.appendChild(card);
+  });
+}
+
+const RESPONSE_TYPES=[["done","Bifare (am făcut)"],["yesno","Da / Nu"],["photo","Poză"],["verify","Făcut + verificat (în doi)"]];
+let reDraft=null, reEditIndex=-1;
+function openReminderEditor(i){
+  reEditIndex=i;
+  if(i>=0) reDraft=JSON.parse(JSON.stringify(REM[i]));
+  else reDraft={id:"r"+Date.now(),t:"",type:"done",zone:"Toți",sound:false,days:[]};
+  reDraft.schedType=reDraft.schedType||(reDraft.interval?"interval":"times");
+  if(!reDraft.times)reDraft.times=["09:00"];
+  if(reDraft.interval==null)reDraft.interval=60;
+  if(reDraft.from==null)reDraft.from=8;
+  if(reDraft.to==null)reDraft.to=22;
+  if(!reDraft.days)reDraft.days=[];
+  if(reDraft.type==="yesno"&&!reDraft.bad)reDraft.bad="Nu";
+  $("re-title").textContent=i>=0?t("Modifică reminder"):t("Reminder nou");
+  renderReminderEditorForm();
+  $("rem-edit-overlay").classList.add("show");
+}
+function renderReminderEditorForm(){
+  $("re-text").value=reDraft.t;
+  $("re-text").oninput=()=>reDraft.t=$("re-text").value;
+
+  const zw=$("re-zone");zw.innerHTML="";
+  const zi=document.createElement("input");zi.value=reDraft.zone;zi.placeholder=t("ex. Bar, Sală, Toți");
+  zi.oninput=()=>reDraft.zone=zi.value;
+  zw.appendChild(zi);
+
+  const tw=$("re-type");tw.innerHTML="";
+  tw.appendChild(selKV(RESPONSE_TYPES.map(([v,l])=>[v,t(l)]),reDraft.type,null,v=>{
+    reDraft.type=v;
+    if(v==="yesno"&&!reDraft.bad)reDraft.bad="Nu"; else if(v!=="yesno")delete reDraft.bad;
+    renderReminderEditorForm();
+  }));
+  $("re-bad-wrap").style.display=reDraft.type==="yesno"?"block":"none";
+  if(reDraft.type==="yesno"){
+    const bw=$("re-bad");bw.innerHTML="";
+    bw.appendChild(selKV([["Da",t("Da")],["Nu",t("Nu")]],reDraft.bad||"Nu",null,v=>reDraft.bad=v));
+  }
+
+  const sw=$("re-schedtype");sw.innerHTML="";
+  [["times",t("Ore fixe")],["interval",t("Interval")]].forEach(([v,l])=>{
+    const b=document.createElement("button");b.type="button";b.textContent=l;
+    b.className=reDraft.schedType===v?"btn-primary":"btn-ghost";
+    b.onclick=()=>{reDraft.schedType=v;renderReminderEditorForm();};
+    sw.appendChild(b);
+  });
+  $("re-times-wrap").style.display=reDraft.schedType==="times"?"block":"none";
+  $("re-interval-wrap").style.display=reDraft.schedType==="interval"?"block":"none";
+  if(reDraft.schedType==="times"){
+    const tl=$("re-times-list");tl.innerHTML="";
+    reDraft.times.forEach((tm,i)=>{
+      const row=document.createElement("div");row.style.cssText="display:flex;gap:8px;margin-bottom:8px;align-items:center";
+      const inp=document.createElement("input");inp.type="time";inp.value=tm;inp.style.flex="1";
+      inp.onchange=()=>reDraft.times[i]=inp.value;
+      const rm=document.createElement("button");rm.className="btn-ghost";rm.textContent="✕";rm.style.cssText="width:42px;flex:none";
+      rm.onclick=()=>{reDraft.times.splice(i,1);if(!reDraft.times.length)reDraft.times.push("09:00");renderReminderEditorForm();};
+      row.append(inp,rm);tl.appendChild(row);
+    });
+  } else {
+    const mi=$("re-int-mins");mi.value=reDraft.interval;mi.oninput=()=>reDraft.interval=num(mi.value);
+    const fi=$("re-int-from");fi.value=reDraft.from;fi.oninput=()=>reDraft.from=num(fi.value);
+    const ti=$("re-int-to");ti.value=reDraft.to;ti.oninput=()=>reDraft.to=num(ti.value);
+  }
+
+  const dw=$("re-days");dw.innerHTML="";
+  DAY_NAMES.forEach((name,i)=>{
+    const on=reDraft.days.includes(i);
+    const b=document.createElement("button");b.type="button";b.textContent=t(name).slice(0,3);
+    b.style.cssText="padding:6px 14px;font-size:12px;border-radius:20px;font-weight:600;"+
+      (on?"background:var(--accent);color:var(--accent-ink);border:1px solid var(--accent)"
+         :"background:var(--surface-2);border:1px solid var(--line);color:var(--ink-dim)");
+    b.onclick=()=>{const p=reDraft.days.indexOf(i);if(p>=0)reDraft.days.splice(p,1);else reDraft.days.push(i);renderReminderEditorForm();};
+    dw.appendChild(b);
+  });
+
+  $("re-sound").checked=!!reDraft.sound;
+  $("re-sound").onchange=()=>reDraft.sound=$("re-sound").checked;
+}
+function addTimeSlot(){ reDraft.times.push("09:00"); renderReminderEditorForm(); }
+function closeReminderEditor(){ $("rem-edit-overlay").classList.remove("show"); reDraft=null; }
+function saveReminderEditor(){
+  if(!reDraft.t.trim()){toast(t("Scrie textul reminderului."));return;}
+  if(!reDraft.zone.trim()){toast(t("Completează zona."));return;}
+  const r={id:reDraft.id, t:reDraft.t.trim(), type:reDraft.type, zone:reDraft.zone.trim(), sound:!!reDraft.sound};
+  if(reDraft.type==="yesno")r.bad=reDraft.bad||"Nu";
+  if(reDraft.schedType==="times")r.times=reDraft.times.slice();
+  else { r.interval=reDraft.interval; r.from=reDraft.from; r.to=reDraft.to; }
+  if(reDraft.days.length)r.days=reDraft.days.slice();
+  if(reEditIndex>=0){ if(REM[reEditIndex].active===false)r.active=false; REM[reEditIndex]=r; }
+  else REM.push(r);
+  persistReminders();
+  closeReminderEditor();
+  renderAdminReminders();
+  renderDash();
+  toast(t("Reminder salvat."));
 }
 
 /* ============================================================
@@ -758,15 +1656,39 @@ async function boot(){
   // reconstruiește staffState din S.team dacă tura e deja începută
   S.team.forEach(p=>staffState[p.name]={on:true,zone:p.zone});
   await loadProducts();
-  if(S.closed){show("s-dash");$("s-dash").innerHTML='<div style="text-align:center;padding:60px 20px"><div style="font-size:54px">✓</div><h2 class="title">Tură închisă azi</h2><p class="sub">Raportul a fost trimis.</p></div>';return;}
+  if(S.closed){show("s-dash");$("s-dash").innerHTML='<div style="text-align:center;padding:60px 20px"><div style="font-size:54px">✓</div><h2 class="title">'+t("Tură închisă azi")+'</h2><p class="sub">'+t("Raportul a fost trimis.")+'</p></div>';return;}
   if(!S.started){
     if(S.team.length){renderMorning();show(morningDone()?"s-dash":"s-morning");}
     else{renderStaff();show("s-staff");}
   } else {
-    renderDash();renderDay();show("s-dash");startReminders();
+    renderDash();renderDay();startReminders();
+    // închiderea pornită nu se poate sări cu refresh — revine exact la etapa ei
+    if(S.phase==="inv"){ renderInventory();show("s-inv"); }
+    else if(S.phase==="loss"){ renderLoss();show("s-loss"); }
+    else if(S.phase==="cash"){ show("s-cash");fillCash(); }
+    else if(S.phase==="final"){ renderFinal();show("s-final"); }
+    else show("s-dash");
   }
+  updateStatusBar();
 }
+/* limba: eticheta butonului + traducerea textelor statice */
+$("lang-btn").textContent=LANG==="ro"?"EN":"RO";
+translateDom();
 if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js").catch(()=>{});}
+
+/* Wake Lock — ecranul tabletei rămâne aprins cât aplicația e vizibilă */
+let wakeLock=null;
+async function requestWakeLock(){
+  if(!("wakeLock" in navigator))return;
+  try{
+    wakeLock=await navigator.wakeLock.request("screen");
+    wakeLock.addEventListener("release",()=>{wakeLock=null;});
+  }catch(e){}
+}
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")requestWakeLock();});
+document.addEventListener("click",()=>{if(!wakeLock)requestWakeLock();},true);
+requestWakeLock();
+
 boot();
 </script>
 </body>
