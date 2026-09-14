@@ -192,7 +192,8 @@ function sendShiftEmail(state) {
 
   // remindere problematice
   var prob = (s.remLog || []).filter(function (r) {
-    return (r.id === "tel" && r.resp === "Da") || (r.id === "prez" && r.resp === "Nu");
+    return (r.id === "tel" && r.resp === "Da") || (r.id === "prez" && r.resp === "Nu") ||
+           (r.id === "totok" && r.resp === "Nu");
   });
   if (prob.length) {
     html.push("<h3 style='color:#b54'>Semnalări</h3><ul>");
@@ -334,6 +335,89 @@ function pad(n) { return String(n).padStart(2, "0"); }
 function removeAutoEmailTriggers() {
   ScriptApp.getProjectTriggers().forEach(function (t) {
     if (t.getHandlerFunction() === "autoCloseEmail") ScriptApp.deleteTrigger(t);
+  });
+}
+
+/* ---------- Alertă: tura a rămas deschisă ----------
+ * NU trimite raportul — doar te anunță dimineața că tura zilei precedente nu a
+ * fost închisă, la ce etapă a rămas și ce anume blochează butonul.
+ * Rulează O DATĂ setupAlertaTuraDeschisa() din editor (selectează funcția sus → Run).
+ */
+var ALERT_FINAL_ITEMS = [
+  "Este curat în baie?",
+  "Este bucătăria curată?",
+  "Este curat în bar și în cafenea?",
+  "Mesele de pe terasă aranjate? Umbrele strânse?",
+  "Z + sold final verificate; telefoane, POS, tabletă la încărcat?"
+];
+
+function setupAlertaTuraDeschisa() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === "alertaTuraDeschisa") ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger("alertaTuraDeschisa").timeBased().everyDays(1).atHour(7).create();
+}
+
+/* citește starea unei zile; dacă există fișiere duplicate, îl ia pe cel mai recent */
+function stareaZilei(zi) {
+  var f = getFolder(root(), "Stare zilnică");
+  var it = f.getFilesByName(zi + ".json");
+  var best = null;
+  while (it.hasNext()) {
+    var file = it.next();
+    if (!best || file.getLastUpdated() > best.getLastUpdated()) best = file;
+  }
+  if (!best) return null;
+  try { return JSON.parse(best.getBlob().getDataAsString()); } catch (e) { return null; }
+}
+
+/* explică de ce a rămas tura deschisă */
+function motivTuraDeschisa(st) {
+  var faza = st.phase || "";
+  var nume = { inv: "Inventar / stocuri", loss: "Consum &amp; pierderi", cash: "Casă (Raport Z)", final: "Checklist final" };
+  var out = [];
+  if (!faza) {
+    out.push("Închiderea nu a fost pornită deloc — nu s-a apăsat butonul <b>Închide tura</b>.");
+    return out;
+  }
+  out.push("Tura a rămas la etapa: <b>" + (nume[faza] || faza) + "</b>.");
+  if (faza === "final") {
+    var fin = st.final || {}, prob = [];
+    for (var i = 0; i < ALERT_FINAL_ITEMS.length; i++) {
+      var x = fin[i] || {};
+      var lipsa = [];
+      if (!x.facut) lipsa.push("cine a făcut");
+      if (!x.verif) lipsa.push("cine a verificat");
+      if (x.facut && x.verif && x.facut === x.verif) lipsa.push("verificator diferit de cel care a făcut");
+      if (!x.photo && !x.photos) lipsa.push("poză");
+      if (lipsa.length) prob.push("<b>" + ALERT_FINAL_ITEMS[i] + "</b> — lipsește: " + lipsa.join(", "));
+    }
+    if (prob.length)
+      out.push("Butonul <b>Trimite &amp; închide</b> era blocat. Mai trebuie completat:<ul><li>" + prob.join("</li><li>") + "</li></ul>");
+    else
+      out.push("Checklist-ul final era complet, deci butonul era activ — doar nu a fost apăsat.");
+  }
+  return out;
+}
+
+function alertaTuraDeschisa() {
+  var ieri = new Date(new Date().getTime() - 24 * 60 * 60 * 1000);
+  var zi = Utilities.formatDate(ieri, Session.getScriptTimeZone(), "yyyy-MM-dd");
+  var st = stareaZilei(zi);
+  if (!st || !st.started || st.closed) return;   // fără tură, sau tura s-a închis cum trebuie
+
+  var html = [];
+  html.push("<h2 style='font-family:Georgia,serif;color:#b54'>⚠ Tura din " + zi + " nu a fost închisă</h2>");
+  html.push("<p><b>Raportul pe email nu a plecat.</b> Datele sunt salvate în întregime — nu s-a pierdut nimic.</p>");
+  motivTuraDeschisa(st).forEach(function (p) { html.push("<p>" + p + "</p>"); });
+  html.push("<p>Deschide tableta: aplicația revine exact la etapa unde a rămas. Completează ce lipsește și apasă " +
+            "<b>Trimite &amp; închide</b> — raportul pleacă atunci, datat " + zi + ".</p>");
+
+  MailApp.sendEmail({
+    to: CONFIG.REPORT_EMAIL,
+    cc: CONFIG.REPORT_EMAIL,
+    subject: "⚠ SEND — tura din " + zi + " a rămas deschisă",
+    htmlBody: html.join("")
   });
 }
 
