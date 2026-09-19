@@ -120,7 +120,7 @@ function logRow(action, req) {
 function stripBig(req) { var c = Object.assign({}, req); delete c.action; return c; }
 
 function saveState(date, state) {
-  // arhivă JSON a stării zilei (util pentru emailul automat de la 23:58)
+  // arhivă JSON a stării zilei (sursa pentru alerta „tura a rămas deschisă")
   var f = getFolder(root(), "Stare zilnică");
   var name = (date || todayStr()) + ".json";
   var it = f.getFilesByName(name);
