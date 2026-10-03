@@ -314,6 +314,10 @@ function sendShiftEmail(state) {
     subject: "SEND — Raport tură " + (s.date || todayStr()),
     htmlBody: html.join("")
   });
+
+  // marcaj scris DOAR după ce emailul a plecat efectiv — pe el se bazează alerta
+  s._emailSent = true;
+  saveState(s.date, s);
 }
 function listBlock(title, arr, fn) {
   if (!arr.length) return "";
@@ -404,21 +408,50 @@ function alertaTuraDeschisa() {
   var ieri = new Date(new Date().getTime() - 24 * 60 * 60 * 1000);
   var zi = Utilities.formatDate(ieri, Session.getScriptTimeZone(), "yyyy-MM-dd");
   var st = stareaZilei(zi);
-  if (!st || !st.started || st.closed) return;   // fără tură, sau tura s-a închis cum trebuie
+  if (!st || !st.started) return;              // nu a existat tură în ziua aceea
 
   var html = [];
-  html.push("<h2 style='font-family:Georgia,serif;color:#b54'>⚠ Tura din " + zi + " nu a fost închisă</h2>");
-  html.push("<p><b>Raportul pe email nu a plecat.</b> Datele sunt salvate în întregime — nu s-a pierdut nimic.</p>");
-  motivTuraDeschisa(st).forEach(function (p) { html.push("<p>" + p + "</p>"); });
-  html.push("<p>Deschide tableta: aplicația revine exact la etapa unde a rămas. Completează ce lipsește și apasă " +
-            "<b>Trimite &amp; închide</b> — raportul pleacă atunci, datat " + zi + ".</p>");
+  if (st.closed) {
+    // tura s-a închis cum trebuie — dar a plecat raportul?
+    if (st._emailSent || st.emailSent) return;  // da, totul e în regulă
+    html.push("<h2 style='font-family:Georgia,serif;color:#b54'>⚠ Raportul din " + zi + " nu a plecat</h2>");
+    html.push("<p>Tura <b>a fost închisă corect</b> — nu e vina echipei. Trimiterea emailului nu a ajuns la server " +
+              "(cel mai probabil internetul tabletei a căzut exact atunci).</p>");
+    html.push("<p>Datele sunt salvate în întregime. Ca să primești raportul: deschide Apps Script, pune data " +
+              "<b>" + zi + "</b> în <code>ZI_DE_RETRIMIS</code> și rulează funcția <b>retrimiteRaport</b>.</p>");
+  } else {
+    html.push("<h2 style='font-family:Georgia,serif;color:#b54'>⚠ Tura din " + zi + " nu a fost închisă</h2>");
+    html.push("<p><b>Raportul pe email nu a plecat.</b> Datele sunt salvate în întregime — nu s-a pierdut nimic.</p>");
+    motivTuraDeschisa(st).forEach(function (p) { html.push("<p>" + p + "</p>"); });
+    html.push("<p>Deschide tableta: aplicația revine exact la etapa unde a rămas. Completează ce lipsește și apasă " +
+              "<b>Trimite &amp; închide</b> — raportul pleacă atunci, datat " + zi + ".</p>");
+  }
 
   MailApp.sendEmail({
     to: CONFIG.REPORT_EMAIL,
     cc: CONFIG.REPORT_EMAIL,
-    subject: "⚠ SEND — tura din " + zi + " a rămas deschisă",
+    subject: "⚠ SEND — raportul din " + zi + " nu a ajuns",
     htmlBody: html.join("")
   });
+}
+
+/* ---------- Retrimitere manuală a unui raport ----------
+ * Pune data dorită mai jos (sau las-o goală pentru ziua de ieri),
+ * apoi selectează funcția retrimiteRaport sus în editor și apasă Run.
+ */
+var ZI_DE_RETRIMIS = "";   // ex. "2026-10-02";  gol = ziua de ieri
+
+function retrimiteRaport() {
+  var zi = ZI_DE_RETRIMIS;
+  if (!zi) {
+    var ieri = new Date(new Date().getTime() - 24 * 60 * 60 * 1000);
+    zi = Utilities.formatDate(ieri, Session.getScriptTimeZone(), "yyyy-MM-dd");
+  }
+  var st = stareaZilei(zi);
+  if (!st) throw new Error("Nu există stare salvată pentru " + zi + ".");
+  sendShiftEmail(st);
+  Logger.log("Raport retrimis pentru " + zi);
+  return "Raport retrimis pentru " + zi;
 }
 
 /*****************************************************************

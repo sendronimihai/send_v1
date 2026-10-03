@@ -535,6 +535,10 @@ const EN = {
   "Tură închisă":"Shift closed","Raportul a fost trimis. Mulțumesc.":"The report has been sent. Thank you.",
   "Tură închisă azi":"Shift closed today","Raportul a fost trimis.":"The report has been sent.",
   "Tura închisă · raport trimis":"Shift closed · report sent",
+  "Raportul NU a plecat":"The report did NOT go out",
+  "Tura e închisă și datele sunt salvate, dar emailul nu a ajuns. Verifică internetul și încearcă din nou.":"The shift is closed and the data is saved, but the email did not go through. Check the internet and try again.",
+  "Reîncearcă trimiterea":"Retry sending",
+  "Se trimite…":"Sending…",
   /* închidere / restricție 22:00 */
   "Nu uita să închizi tura!":"Don't forget to close the shift!",
   /* remindere pop-up */
@@ -1357,12 +1361,45 @@ async function closeShift(){
   if(S.busy){const last=(S.busyLog||[])[(S.busyLog||[]).length-1];if(last&&!last.to)last.to=hm(new Date());S.busy=false;}
   S.closed=true;S.phase="closed";buildOrderList();save();
   await backend("saveFinal",{final:S.final});
-  await backend("sendEmail",{state:S});
-  try{localStorage.removeItem("send_active_day");}catch(e){} // ziua următoare pornește curat
+  // nu declarăm tura trimisă până când backend-ul nu confirmă — altfel operatorul
+  // pleacă acasă convins că raportul a plecat, deși cererea a căzut pe drum
+  const res=await backend("sendEmail",{state:S});
+  const trimis=!!(res&&res.ok);
+  S.emailSent=trimis;save();
   closingInProgress=false;
-  toast(t("Tura închisă · raport trimis"));
   $("gate").style.display="none";$("nav").style.display="none";$("statusbar").style.display="none";
-  setTimeout(()=>{$("s-final").innerHTML='<div style="text-align:center;padding:60px 20px"><div style="font-size:54px">✓</div><h2 class="title" style="margin-top:14px">'+t("Tură închisă")+'</h2><p class="sub">'+t("Raportul a fost trimis. Mulțumesc.")+'</p></div>';},400);
+  if(trimis){
+    try{localStorage.removeItem("send_active_day");}catch(e){} // ziua următoare pornește curat
+    toast(t("Tura închisă · raport trimis"));
+    setTimeout(()=>{$("s-final").innerHTML='<div style="text-align:center;padding:60px 20px"><div style="font-size:54px">✓</div><h2 class="title" style="margin-top:14px">'+t("Tură închisă")+'</h2><p class="sub">'+t("Raportul a fost trimis. Mulțumesc.")+'</p></div>';},400);
+  } else {
+    toast(t("Raportul NU a plecat"));
+    showSendFailed();
+  }
+}
+/* ecranul de eroare la trimitere — rămâne până raportul chiar pleacă */
+function showSendFailed(){
+  show("s-final");
+  $("gate").style.display="none";$("nav").style.display="none";$("statusbar").style.display="none";
+  $("s-final").innerHTML='<div style="text-align:center;padding:48px 20px">'+
+    '<div style="font-size:54px">⚠</div>'+
+    '<h2 class="title" style="margin-top:14px;color:var(--bad)">'+t("Raportul NU a plecat")+'</h2>'+
+    '<p class="sub">'+t("Tura e închisă și datele sunt salvate, dar emailul nu a ajuns. Verifică internetul și încearcă din nou.")+'</p>'+
+    '<button class="btn-primary" id="btn-retry" style="margin-top:10px">'+t("Reîncearcă trimiterea")+'</button></div>';
+  $("btn-retry").onclick=retrySendReport;
+}
+async function retrySendReport(){
+  const b=$("btn-retry");if(b){b.disabled=true;b.textContent=t("Se trimite…");}
+  const res=await backend("sendEmail",{state:S});
+  if(res&&res.ok){
+    S.emailSent=true;save();
+    try{localStorage.removeItem("send_active_day");}catch(e){}
+    toast(t("Tura închisă · raport trimis"));
+    $("s-final").innerHTML='<div style="text-align:center;padding:60px 20px"><div style="font-size:54px">✓</div><h2 class="title" style="margin-top:14px">'+t("Tură închisă")+'</h2><p class="sub">'+t("Raportul a fost trimis. Mulțumesc.")+'</p></div>';
+  } else {
+    toast(t("Raportul NU a plecat"));
+    if(b){b.disabled=false;b.textContent=t("Reîncearcă trimiterea");}
+  }
 }
 
 /* ============================================================
@@ -1656,7 +1693,10 @@ async function boot(){
   // reconstruiește staffState din S.team dacă tura e deja începută
   S.team.forEach(p=>staffState[p.name]={on:true,zone:p.zone});
   await loadProducts();
-  if(S.closed){show("s-dash");$("s-dash").innerHTML='<div style="text-align:center;padding:60px 20px"><div style="font-size:54px">✓</div><h2 class="title">'+t("Tură închisă azi")+'</h2><p class="sub">'+t("Raportul a fost trimis.")+'</p></div>';return;}
+  if(S.closed){
+    // tură închisă, dar raportul nu a plecat → ecranul de reîncercare, nu cel de succes
+    if(S.emailSent===false){showSendFailed();return;}
+    show("s-dash");$("s-dash").innerHTML='<div style="text-align:center;padding:60px 20px"><div style="font-size:54px">✓</div><h2 class="title">'+t("Tură închisă azi")+'</h2><p class="sub">'+t("Raportul a fost trimis.")+'</p></div>';return;}
   if(!S.started){
     if(S.team.length){renderMorning();show(morningDone()?"s-dash":"s-morning");}
     else{renderStaff();show("s-staff");}
