@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>SEND · Manager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --milk:#F5F1EA; --card:#FFFFFF; --ink:#22150E; --ink2:#6E5D50;
+    --copper:#A85B2A; --copper-soft:#F0E2D5;
+    --ok:#2F7D46; --bad:#B5483C; --warn:#C98A00;
+    --line:#E7DFD4; --r:14px;
+    --shadow:0 1px 3px rgba(34,21,14,.08);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--milk);color:var(--ink);
+    font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    -webkit-tap-highlight-color:transparent}
+  .disp{font-family:"Fraunces",Georgia,serif}
+  button{font:inherit;border:0;background:none;cursor:pointer;color:inherit}
+  input,select,textarea{font:inherit;color:var(--ink);background:#fff;
+    border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--copper);outline-offset:1px}
+
+  header{position:sticky;top:0;z-index:20;background:var(--milk);
+    border-bottom:1px solid var(--line);padding:10px 14px;
+    display:flex;align-items:center;gap:10px}
+  .brand{font-family:"Fraunces",serif;font-weight:700;font-size:22px;letter-spacing:.5px}
+  .brand small{font-weight:500;color:var(--copper);font-size:13px;margin-left:6px}
+  .spacer{flex:1}
+  .mode{font-size:12px;padding:4px 10px;border-radius:999px;background:var(--copper-soft);color:var(--copper);font-weight:600}
+  .mode.on{background:var(--copper);color:#fff}
+  #btnLock{font-size:20px;padding:4px 6px}
+
+  .wrap{max-width:760px;margin:0 auto;padding:14px 14px 110px}
+
+  /* filtre */
+  .chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{flex:0 0 auto;padding:7px 14px;border-radius:999px;background:#fff;
+    border:1px solid var(--line);font-weight:600;font-size:14px;color:var(--ink2)}
+  .chip.sel{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .filters{display:flex;gap:8px;margin:10px 0 14px;align-items:center}
+  .seg{display:flex;background:#fff;border:1px solid var(--line);border-radius:999px;padding:3px;flex:1}
+  .seg button{flex:1;padding:7px 4px;border-radius:999px;font-weight:600;font-size:13px;color:var(--ink2)}
+  .seg button.sel{background:var(--copper);color:#fff}
+  #datePick{width:140px;flex:0 0 auto}
+
+  /* carduri */
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+  .card{background:var(--card);border-radius:var(--r);padding:14px;box-shadow:var(--shadow)}
+  .card .lbl{font-size:12px;color:var(--ink2);text-transform:uppercase;letter-spacing:.6px;font-weight:600}
+  .card .val{font-family:"Fraunces",serif;font-size:26px;font-weight:700;margin-top:4px}
+  .val.pos{color:var(--ok)} .val.neg{color:var(--bad)}
+  .card.eff{grid-row:span 2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+  .card.eff .val{font-size:34px}
+
+  /* ceașca de eficiență */
+  .cup{width:96px;height:96px}
+  .sub{font-size:12px;color:var(--ink2)}
+
+  /* grafice */
+  .panel{background:var(--card);border-radius:var(--r);padding:14px;box-shadow:var(--shadow);margin-bottom:14px}
+  .panel h3{font-family:"Fraunces",serif;font-size:16px;margin-bottom:10px}
+  .panel canvas{width:100%!important;max-height:230px}
+
+  /* jurnal */
+  .entry{background:var(--card);border-radius:var(--r);padding:12px 14px;box-shadow:var(--shadow);
+    margin-bottom:8px;display:flex;gap:10px;align-items:flex-start}
+  .entry .ic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+    font-size:17px;flex:0 0 auto}
+  .ic.Sarcina{background:#EDE6DB} .ic.Bonus{background:#E2F0E6} .ic.Penalizare{background:#F6E3E0} .ic.Vanzari{background:#EFE7F5}
+  .entry .bd{flex:1;min-width:0}
+  .entry .t1{font-weight:700;font-size:14px}
+  .entry .t2{font-size:13px;color:var(--ink2);margin-top:2px;white-space:pre-wrap}
+  .entry .amt{font-family:"Fraunces",serif;font-weight:700;white-space:nowrap}
+  .amt.pos{color:var(--ok)} .amt.neg{color:var(--bad)}
+  .tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;margin-left:6px;vertical-align:1px}
+  .tag.ok{background:#E2F0E6;color:var(--ok)} .tag.no{background:#F6E3E0;color:var(--bad)}
+  .plinks a{font-size:12px;color:var(--copper);margin-right:8px}
+  .del{color:var(--bad);font-size:16px;padding:4px}
+  .dayhdr{font-family:"Fraunces",serif;font-weight:700;margin:16px 0 8px;color:var(--ink2)}
+  .empty{text-align:center;color:var(--ink2);padding:30px 10px}
+
+  /* FAB + sheet */
+  #fab{position:fixed;right:18px;bottom:18px;width:58px;height:58px;border-radius:50%;
+    background:var(--copper);color:#fff;font-size:30px;box-shadow:0 4px 14px rgba(168,91,42,.45);z-index:30;display:none}
+  .managerOn #fab{display:block}
+  .overlay{position:fixed;inset:0;background:rgba(34,21,14,.45);z-index:40;display:none}
+  .overlay.show{display:block}
+  .sheet{position:fixed;left:0;right:0;bottom:0;z-index:50;background:var(--milk);
+    border-radius:20px 20px 0 0;max-height:92vh;overflow-y:auto;padding:16px 16px 30px;
+    transform:translateY(105%);transition:transform .25s ease}
+  .sheet.show{transform:none}
+  .sheet h2{font-family:"Fraunces",serif;font-size:19px;margin-bottom:12px}
+  .fld{margin-bottom:12px}
+  .fld label{display:block;font-size:12px;font-weight:700;color:var(--ink2);
+    text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+  .typebtns{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px}
+  .typebtns button{padding:9px 2px;border-radius:10px;background:#fff;border:1px solid var(--line);font-weight:700;font-size:13px}
+  .typebtns button.sel{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .pchips{display:flex;flex-wrap:wrap;gap:7px}
+  .pchips .chip.sel{background:var(--copper);border-color:var(--copper);color:#fff}
+  .row2{display:flex;gap:10px}.row2>*{flex:1}
+  .statusseg{display:flex;gap:8px}
+  .statusseg button{flex:1;padding:11px;border-radius:10px;background:#fff;border:1px solid var(--line);font-weight:700}
+  .statusseg .ok.sel{background:var(--ok);color:#fff;border-color:var(--ok)}
+  .statusseg .no.sel{background:var(--bad);color:#fff;border-color:var(--bad)}
+  .hint{font-size:13px;color:var(--ink2);margin-top:4px}
+  .livebal{background:var(--copper-soft);border-radius:10px;padding:10px 12px;font-size:14px;margin-bottom:12px}
+  .thumbs{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .thumbs img{width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+  .primary{width:100%;padding:14px;border-radius:12px;background:var(--copper);color:#fff;
+    font-weight:700;font-size:16px;margin-top:6px}
+  .primary:disabled{opacity:.55}
+  .ghost{width:100%;padding:11px;border-radius:12px;border:1px solid var(--line);background:#fff;font-weight:600;margin-top:8px}
+
+  /* catalog */
+  .catrow{display:grid;grid-template-columns:96px 1fr 74px 30px;gap:6px;margin-bottom:6px;align-items:center}
+  .catrow select,.catrow input{padding:8px}
+  .catrow .del{text-align:center}
+
+  #toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%) translateY(20px);
+    background:var(--ink);color:#fff;padding:10px 18px;border-radius:999px;font-size:14px;
+    opacity:0;transition:.25s;z-index:60;pointer-events:none;white-space:nowrap}
+  #toast.show{opacity:1;transform:translateX(-50%)}
+  #loading{position:fixed;inset:0;background:var(--milk);z-index:70;display:flex;
+    flex-direction:column;align-items:center;justify-content:center;gap:12px}
+  .spin{width:34px;height:34px;border:3px solid var(--line);border-top-color:var(--copper);
+    border-radius:50%;animation:sp 1s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){.sheet{transition:none}.spin{animation-duration:2s}}
+</style>
+</head>
+<body>
+<div id="loading"><div class="spin"></div><div class="sub">Se pregătește espresso-ul de date…</div></div>
+
+<header>
+  <div class="brand">SEND<small>manager</small></div>
+  <div class="spacer"></div>
+  <span class="mode" id="modeBadge">Vedere echipă</span>
+  <button id="btnLock" title="Mod manager">🔒</button>
+</header>
+
+<div class="wrap">
+  <div class="chips" id="personChips"></div>
+
+  <div class="filters">
+    <div class="seg" id="periodSeg">
+      <button data-p="zi">Zi</button>
+      <button data-p="sapt">Săpt.</button>
+      <button data-p="luna" class="sel">Lună</button>
+    </div>
+    <input type="date" id="datePick">
+  </div>
+
+  <div class="cards">
+    <div class="card eff">
+      <svg class="cup" viewBox="0 0 100 100" aria-hidden="true">
+        <defs><clipPath id="cupclip"><path d="M22 30 h44 v34 a22 12 0 0 1 -44 0 z"/></clipPath></defs>
+        <path d="M66 36 h8 a10 10 0 0 1 0 20 h-8" fill="none" stroke="#C9B8A6" stroke-width="5"/>
+        <rect id="fill" x="20" y="64" width="48" height="0" fill="#A85B2A" clip-path="url(#cupclip)"/>
+        <path d="M22 30 h44 v34 a22 12 0 0 1 -44 0 z" fill="none" stroke="#22150E" stroke-width="4"/>
+        <ellipse cx="44" cy="82" rx="26" ry="4" fill="#E7DFD4"/>
+      </svg>
+      <div class="lbl">Eficiență</div>
+      <div class="val disp" id="cEff">—</div>
+      <div class="sub" id="cEffSub"></div>
+    </div>
+    <div class="card"><div class="lbl">Bilanț bonus − penalizări</div><div class="val" id="cBal">0 RON</div></div>
+    <div class="card"><div class="lbl">Vânzări</div><div class="val" id="cSales">0 RON</div>
+      <div class="sub" id="cTrans"></div></div>
+  </div>
+  <div class="cards" style="grid-template-columns:1fr 1fr">
+    <div class="card"><div class="lbl">Medie / tranzacție</div><div class="val" id="cAvg">—</div></div>
+    <div class="card"><div class="lbl">Sarcini îndeplinite</div><div class="val" id="cTasks">—</div></div>
+  </div>
+
+  <div class="panel"><h3>Eficiență pe zile</h3><canvas id="chEff"></canvas></div>
+  <div class="panel"><h3>Vânzări & medie / tranzacție</h3><canvas id="chSales"></canvas></div>
+  <div class="panel"><h3>Bonusuri vs. penalizări (RON)</h3><canvas id="chBP"></canvas></div>
+  <div class="panel"><h3>Comparație echipă — perioada selectată</h3><canvas id="chTeam"></canvas></div>
+
+  <h3 class="disp" style="margin:18px 0 4px">Jurnal</h3>
+  <div id="journal"></div>
+</div>
+
+<button id="fab" aria-label="Adaugă">+</button>
+<div class="overlay" id="overlay"></div>
+
+<!-- foaia de adăugare -->
+<div class="sheet" id="addSheet">
+  <h2 id="sheetTitle">Adaugă înregistrare</h2>
+  <div class="typebtns" id="typeBtns">
+    <button data-t="Sarcina" class="sel">Sarcină</button>
+    <button data-t="Bonus">Bonus</button>
+    <button data-t="Penalizare">Penalizare</button>
+    <button data-t="Vanzari">Vânzări</button>
+  </div>
+
+  <div class="fld"><label>Data</label><input type="date" id="fDate"></div>
+
+  <div class="fld"><label id="pLbl">Persoane (poți alege mai multe)</label>
+    <div class="pchips" id="fPersons"></div>
+  </div>
+
+  <div class="livebal" id="liveBal" style="display:none"></div>
+
+  <!-- Sarcină -->
+  <div id="secTask">
+    <div class="fld"><label>Sarcina</label>
+      <input id="fTask" list="catPen" placeholder="ex.: Curățenie espressor">
+      <datalist id="catPen"></datalist>
+    </div>
+    <div class="fld"><label>Status</label>
+      <div class="statusseg">
+        <button class="ok sel" id="stOk">✓ Îndeplinită</button>
+        <button class="no" id="stNo">✗ Neîndeplinită</button>
+      </div>
+    </div>
+    <div class="fld" id="penWrap" style="display:none">
+      <label>Penalizare aplicată (RON / persoană)</label>
+      <input type="number" id="fPenVal" min="0" step="1" value="0">
+      <div class="hint" id="penHint">0 = fără penalizare financiară, doar sarcină ratată.</div>
+    </div>
+  </div>
+
+  <!-- Bonus / Penalizare -->
+  <div id="secBP" style="display:none">
+    <div class="fld"><label id="bpCatLbl">Din catalog (opțional)</label>
+      <select id="fCat"><option value="">— alege sau scrie mai jos —</option></select>
+    </div>
+    <div class="fld"><label>Motiv / sarcină</label><input id="fReason" placeholder="ex.: Efort suplimentar la eveniment"></div>
+    <div class="fld"><label>Valoare (RON / persoană)</label><input type="number" id="fVal" min="0" step="1" value="0"></div>
+  </div>
+
+  <!-- Vânzări -->
+  <div id="secSales" style="display:none">
+    <div class="row2">
+      <div class="fld"><label>Vânzări (RON)</label><input type="number" id="fSales" min="0" step="0.01" value="0"></div>
+      <div class="fld"><label>Nr. tranzacții</label><input type="number" id="fTrans" min="0" step="1" value="0"></div>
+    </div>
+    <div class="hint" id="avgHint">Medie / tranzacție: —</div>
+  </div>
+
+  <div class="fld"><label>Comentariu / explicație</label><textarea id="fNote" rows="2" placeholder="Explicație vizibilă pentru toată echipa"></textarea></div>
+
+  <div class="fld" id="photoWrap">
+    <label>Poze (max 5)</label>
+    <div class="row2">
+      <input type="file" id="fPhotos" accept="image/*" capture="environment" multiple>
+      <select id="fFolder" style="flex:0 0 46%">
+        <option value="Penalizari">→ folder Penalizări</option>
+        <option value="Bonusuri">→ folder Bonusuri</option>
+      </select>
+    </div>
+    <div class="thumbs" id="thumbs"></div>
+  </div>
+
+  <button class="primary" id="btnSave">Salvează</button>
+  <button class="ghost" id="btnCloseSheet">Renunță</button>
+</div>
+
+<!-- catalog -->
+<div class="sheet" id="catSheet">
+  <h2>Catalog bonusuri & penalizări</h2>
+  <div class="hint" style="margin-bottom:10px">Valorile de aici se propun automat la completare. Le poți modifica oricând pentru un caz anume.</div>
+  <div id="catRows"></div>
+  <button class="ghost" id="btnCatAdd">+ Adaugă rând</button>
+  <button class="primary" id="btnCatSave">Salvează catalogul</button>
+  <button class="ghost" id="btnCatClose">Închide</button>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ============ utilitare ============ */
+/* Aplicația rulează într-un iframe (Apps Script). Unele browsere blochează
+   stocarea în acest context, iar un acces neprotejat ar opri toată aplicația. */
+function ssGet(k){ try{ return sessionStorage.getItem(k)||null; }catch(e){ return null; } }
+function ssSet(k,v){ try{ sessionStorage.setItem(k,v); }catch(e){} }
+function ssDel(k){ try{ sessionStorage.removeItem(k); }catch(e){} }
+
+var S = {
+  team: [], catalog: [], rows: {},          // rows: { "2026-08": [...] }
+  person: "Toți", period: "luna", date: todayStr(),
+  pin: ssGet("sendPin"),
+  charts: {}
+};
+function todayStr(){var d=new Date();return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate());}
+function p2(n){return String(n).padStart(2,"0");}
+function ymOf(ds){return ds.substring(0,7);}
+function addDays(ds,n){var d=new Date(ds+"T12:00:00");d.setDate(d.getDate()+n);
+  return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate());}
+function ron(n){return (Number(n)||0).toLocaleString("ro-RO",{maximumFractionDigits:2})+" RON";}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+function toast(m){var t=document.getElementById("toast");t.textContent=m;t.classList.add("show");
+  clearTimeout(t._h);t._h=setTimeout(function(){t.classList.remove("show");},2600);}
+function api(action,payload){
+  return new Promise(function(res,rej){
+    var req=Object.assign({action:action},payload||{});
+    google.script.run
+      .withSuccessHandler(function(r){ if(r&&r.ok)res(r); else rej((r&&r.error)||"Eroare server"); })
+      .withFailureHandler(function(e){ rej(String(e)); })
+      .mgrApi(req);
+  });
+}
+
+/* ============ perioadă ============ */
+function periodRange(){
+  var d=S.date;
+  if(S.period==="zi") return {from:d,to:d};
+  if(S.period==="sapt"){
+    var dt=new Date(d+"T12:00:00"), dow=(dt.getDay()+6)%7;   // luni=0
+    var from=addDays(d,-dow); return {from:from,to:addDays(from,6)};
+  }
+  var ym=ymOf(d), last=new Date(Number(ym.substring(0,4)),Number(ym.substring(5,7)),0).getDate();
+  return {from:ym+"-01",to:ym+"-"+p2(last)};
+}
+function ensureRows(from,to){
+  var need=[], a=ymOf(from), b=ymOf(to);
+  if(!S.rows[a]) need.push(a);
+  if(b!==a && !S.rows[b]) need.push(b);
+  if(!need.length) return Promise.resolve();
+  return api("getRange",{fromYm:need[0],toYm:need[need.length-1]}).then(function(r){
+    need.forEach(function(ym){S.rows[ym]=[];});
+    r.rows.forEach(function(row){ if(!S.rows[row.ym])S.rows[row.ym]=[]; S.rows[row.ym].push(row); });
+  });
+}
+function rowsIn(from,to,person){
+  var out=[], yms=[ymOf(from)]; if(ymOf(to)!==yms[0]) yms.push(ymOf(to));
+  yms.forEach(function(ym){ (S.rows[ym]||[]).forEach(function(r){
+    if(r.data<from||r.data>to) return;
+    if(person && person!=="Toți" && r.persoana!==person) return;
+    out.push(r);
+  });});
+  return out;
+}
+
+/* ============ statistici & eficiență ============ */
+function statsOf(rows){
+  var s={done:0,total:0,nB:0,sumB:0,nP:0,sumP:0,sales:0,trans:0};
+  rows.forEach(function(r){
+    if(r.tip==="Sarcina"){ s.total++; if(r.status==="Îndeplinită")s.done++; }
+    else if(r.tip==="Bonus"){ s.nB++; s.sumB+=r.valoare; }
+    else if(r.tip==="Penalizare"){ s.nP++; s.sumP+=r.valoare; }
+    else if(r.tip==="Vanzari"){ s.sales+=r.valoare; s.trans+=r.tranzactii; }
+  });
+  var den=s.total+s.nB+s.nP;
+  s.eff=den? Math.round((s.done+s.nB)/den*100) : null;
+  s.bal=s.sumB-s.sumP;
+  s.avg=s.trans? s.sales/s.trans : null;
+  return s;
+}
+
+/* ============ randare ============ */
+function renderAll(){
+  var pr=periodRange();
+  ensureRows(pr.from,pr.to).then(function(){
+    var rows=rowsIn(pr.from,pr.to,S.person), st=statsOf(rows);
+    // carduri
+    document.getElementById("cEff").textContent = st.eff==null?"—":st.eff+"%";
+    document.getElementById("cEffSub").textContent =
+      st.eff==null?"fără date în perioadă":(st.done+" sarcini + "+st.nB+" bonus − "+st.nP+" penalizări");
+    var fh=st.eff==null?0:st.eff; // umple ceașca
+    var f=document.getElementById("fill"), h=46*fh/100;
+    f.setAttribute("height",h); f.setAttribute("y",76-h);
+    var bal=document.getElementById("cBal");
+    bal.textContent=(st.bal>0?"+":"")+ron(st.bal);
+    bal.className="val "+(st.bal>0?"pos":st.bal<0?"neg":"");
+    document.getElementById("cSales").textContent=ron(st.sales);
+    document.getElementById("cTrans").textContent=st.trans+" tranzacții";
+    document.getElementById("cAvg").textContent=st.avg==null?"—":ron(st.avg);
+    document.getElementById("cTasks").textContent=st.total?st.done+" / "+st.total:"—";
+    renderCharts(pr);
+    renderJournal(rows);
+  }).catch(function(e){toast("Eroare la încărcare: "+e);});
+}
+
+function dayLabels(pr){
+  var out=[],d=pr.from;
+  while(d<=pr.to){out.push(d);d=addDays(d,1);}
+  return out;
+}
+function mkChart(id,cfg){
+  if(S.charts[id])S.charts[id].destroy();
+  S.charts[id]=new Chart(document.getElementById(id),cfg);
+}
+function renderCharts(pr){
+  var days=dayLabels(pr), lab=days.map(function(d){return d.substring(8,10);});
+  var effD=[],salD=[],avgD=[],bD=[],pD=[];
+  days.forEach(function(d){
+    var st=statsOf(rowsIn(d,d,S.person));
+    effD.push(st.eff); salD.push(st.sales); avgD.push(st.avg);
+    bD.push(st.sumB); pD.push(st.sumP);
+  });
+  var copper="#A85B2A",green="#2F7D46",red="#B5483C",ink="#22150E";
+  mkChart("chEff",{type:"line",data:{labels:lab,datasets:[{data:effD,borderColor:copper,
+    backgroundColor:"rgba(168,91,42,.12)",fill:true,spanGaps:true,tension:.3,pointRadius:3}]},
+    options:{plugins:{legend:{display:false}},scales:{y:{min:0,max:100,ticks:{callback:function(v){return v+"%";}}}}}});
+  mkChart("chSales",{type:"bar",data:{labels:lab,datasets:[
+    {type:"bar",label:"Vânzări",data:salD,backgroundColor:"rgba(168,91,42,.55)",yAxisID:"y"},
+    {type:"line",label:"Medie/tranz.",data:avgD,borderColor:ink,spanGaps:true,tension:.3,pointRadius:2,yAxisID:"y2"}]},
+    options:{scales:{y:{position:"left"},y2:{position:"right",grid:{display:false}}}}});
+  mkChart("chBP",{type:"bar",data:{labels:lab,datasets:[
+    {label:"Bonusuri",data:bD,backgroundColor:green},
+    {label:"Penalizări",data:pD,backgroundColor:red}]},options:{}});
+  // comparație echipă
+  var effT=[],balT=[];
+  S.team.forEach(function(p){var st=statsOf(rowsIn(pr.from,pr.to,p));
+    effT.push(st.eff==null?0:st.eff); balT.push(st.bal);});
+  mkChart("chTeam",{type:"bar",data:{labels:S.team,datasets:[
+    {label:"Eficiență %",data:effT,backgroundColor:"rgba(168,91,42,.8)"},
+    {label:"Bilanț RON",data:balT,backgroundColor:balT.map(function(v){return v<0?red:green;})}]},
+    options:{indexAxis:"y"}});
+}
+
+function renderJournal(rows){
+  var j=document.getElementById("journal");
+  if(!rows.length){j.innerHTML='<div class="empty">Nicio înregistrare în perioada selectată.<br>Barista fără date e doar un om cu o cafea. ☕</div>';return;}
+  var byDay={};
+  rows.forEach(function(r){(byDay[r.data]=byDay[r.data]||[]).push(r);});
+  var days=Object.keys(byDay).sort().reverse(), h=[];
+  var icons={Sarcina:"📋",Bonus:"🏅",Penalizare:"⚠️",Vanzari:"💰"};
+  days.forEach(function(d){
+    h.push('<div class="dayhdr">'+d+'</div>');
+    byDay[d].forEach(function(r){
+      var amt="",t1=esc(r.persoana),t2=esc(r.detaliu||"");
+      if(r.tip==="Sarcina") t1+= r.status==="Îndeplinită"?'<span class="tag ok">Îndeplinită</span>':'<span class="tag no">Neîndeplinită</span>';
+      if(r.tip==="Bonus") amt='<span class="amt pos">+'+ron(r.valoare)+'</span>';
+      if(r.tip==="Penalizare") amt='<span class="amt neg">−'+ron(r.valoare)+'</span>';
+      if(r.tip==="Vanzari"){t2="Vânzări: "+ron(r.valoare)+" · "+r.tranzactii+" tranz."+
+        (r.tranzactii?" · medie "+ron(r.valoare/r.tranzactii):"");}
+      if(r.comentariu) t2+=(t2?"\n":"")+esc(r.comentariu);
+      var pl=r.poze.length?'<div class="plinks">'+r.poze.map(function(u,i){
+        return '<a href="'+esc(u)+'" target="_blank">📷 poza '+(i+1)+'</a>';}).join("")+'</div>':"";
+      var del=S.pin?'<button class="del" data-ym="'+r.ym+'" data-id="'+r.id+'" title="Șterge">🗑</button>':"";
+      h.push('<div class="entry"><div class="ic '+r.tip+'">'+icons[r.tip]+'</div>'+
+        '<div class="bd"><div class="t1">'+t1+'</div>'+(t2?'<div class="t2">'+t2+'</div>':"")+pl+'</div>'+amt+del+'</div>');
+    });
+  });
+  j.innerHTML=h.join("");
+  j.querySelectorAll(".del").forEach(function(b){
+    b.onclick=function(){
+      if(!confirm("Ștergi definitiv această înregistrare?"))return;
+      api("deleteEntry",{pin:S.pin,ym:b.dataset.ym,id:b.dataset.id}).then(function(){
+        delete S.rows[b.dataset.ym]; toast("Șters."); renderAll();
+      }).catch(function(e){toast(e);});
+    };
+  });
+}
+
+/* ============ filtre UI ============ */
+function renderPersonChips(){
+  var c=document.getElementById("personChips"), names=["Toți"].concat(S.team);
+  c.innerHTML=names.map(function(n){
+    return '<button class="chip'+(S.person===n?" sel":"")+'" data-p="'+esc(n)+'">'+esc(n)+'</button>';}).join("");
+  c.querySelectorAll(".chip").forEach(function(b){
+    b.onclick=function(){S.person=b.dataset.p;renderPersonChips();renderAll();};});
+}
+document.getElementById("periodSeg").querySelectorAll("button").forEach(function(b){
+  b.onclick=function(){S.period=b.dataset.p;
+    document.querySelectorAll("#periodSeg button").forEach(function(x){x.classList.toggle("sel",x===b);});
+    renderAll();};
+});
+document.getElementById("datePick").onchange=function(){S.date=this.value||todayStr();renderAll();};
+
+/* ============ mod manager ============ */
+function setMode(){
+  document.body.classList.toggle("managerOn",!!S.pin);
+  var m=document.getElementById("modeBadge");
+  m.textContent=S.pin?"Mod manager":"Vedere echipă";
+  m.classList.toggle("on",!!S.pin);
+  document.getElementById("btnLock").textContent=S.pin?"🔓":"🔒";
+}
+document.getElementById("btnLock").onclick=function(){
+  if(S.pin){
+    if(confirm("Ieși din modul manager?")){S.pin=null;ssDel("sendPin");setMode();renderAll();}
+    return;
+  }
+  var pin=prompt("PIN manager:"); if(pin==null)return;
+  api("verifyPin",{pin:pin}).then(function(r){
+    if(r.valid){S.pin=pin;ssSet("sendPin",pin);setMode();renderAll();
+      toast("Mod manager activ. Ține apăsat pe + pentru catalog.");}
+    else toast("PIN greșit.");
+  }).catch(function(e){toast(e);});
+};
+
+/* ============ foaia de adăugare ============ */
+var F={tip:"Sarcina",persons:[],status:"Îndeplinită",photos:[]};
+var ov=document.getElementById("overlay"),sheet=document.getElementById("addSheet"),catSheet=document.getElementById("catSheet");
+function openSheet(sh){ov.classList.add("show");sh.classList.add("show");}
+function closeSheets(){ov.classList.remove("show");sheet.classList.remove("show");catSheet.classList.remove("show");}
+ov.onclick=closeSheets;
+document.getElementById("btnCloseSheet").onclick=closeSheets;
+
+var fab=document.getElementById("fab"),fabHold;
+fab.onclick=function(){openAdd();};
+fab.addEventListener("touchstart",function(){fabHold=setTimeout(function(){openCatalog();},650);});
+fab.addEventListener("touchend",function(){clearTimeout(fabHold);});
+fab.addEventListener("contextmenu",function(e){e.preventDefault();openCatalog();});
+
+function openAdd(){
+  F={tip:"Sarcina",persons:[],status:"Îndeplinită",photos:[]};
+  document.getElementById("fDate").value=S.date;
+  ["fTask","fReason","fNote"].forEach(function(id){document.getElementById(id).value="";});
+  ["fPenVal","fVal","fSales","fTrans"].forEach(function(id){document.getElementById(id).value="0";});
+  document.getElementById("fPhotos").value="";document.getElementById("thumbs").innerHTML="";
+  setType("Sarcina");renderFPersons();updateLiveBal();
+  openSheet(sheet);
+}
+function setType(t){
+  F.tip=t;
+  document.querySelectorAll("#typeBtns button").forEach(function(b){b.classList.toggle("sel",b.dataset.t===t);});
+  document.getElementById("secTask").style.display  = t==="Sarcina"?"":"none";
+  document.getElementById("secBP").style.display    = (t==="Bonus"||t==="Penalizare")?"":"none";
+  document.getElementById("secSales").style.display = t==="Vanzari"?"":"none";
+  document.getElementById("photoWrap").style.display= t==="Vanzari"?"none":"";
+  document.getElementById("pLbl").textContent = t==="Vanzari"?"Persoana (una singură)":"Persoane (poți alege mai multe)";
+  document.getElementById("fFolder").value = t==="Bonus"?"Bonusuri":"Penalizari";
+  if(t==="Bonus"||t==="Penalizare"){
+    var sel=document.getElementById("fCat");
+    var items=S.catalog.filter(function(c){return c.tip===t;});
+    sel.innerHTML='<option value="">— alege sau scrie mai jos —</option>'+
+      items.map(function(c,i){return '<option value="'+i+'">'+esc(c.denumire)+' · '+c.valoare+' RON</option>';}).join("");
+    sel.onchange=function(){
+      if(sel.value===""){return;}
+      var c=items[Number(sel.value)];
+      document.getElementById("fReason").value=c.denumire;
+      document.getElementById("fVal").value=c.valoare;
+    };
+  }
+  if(t==="Vanzari"&&F.persons.length>1)F.persons=[F.persons[0]];
+  renderFPersons();
+}
+document.querySelectorAll("#typeBtns button").forEach(function(b){b.onclick=function(){setType(b.dataset.t);};});
+
+function renderFPersons(){
+  var c=document.getElementById("fPersons"),multi=F.tip!=="Vanzari";
+  var names=(multi?["Toată echipa"]:[]).concat(S.team);
+  c.innerHTML=names.map(function(n){
+    var sel=n==="Toată echipa"?F.persons.length===S.team.length:F.persons.indexOf(n)>=0;
+    return '<button class="chip'+(sel?" sel":"")+'" data-n="'+esc(n)+'">'+esc(n)+'</button>';}).join("");
+  c.querySelectorAll(".chip").forEach(function(b){
+    b.onclick=function(){
+      var n=b.dataset.n;
+      if(n==="Toată echipa"){F.persons=F.persons.length===S.team.length?[]:S.team.slice();}
+      else if(F.tip==="Vanzari"){F.persons=[n];}
+      else{var i=F.persons.indexOf(n); i>=0?F.persons.splice(i,1):F.persons.push(n);}
+      renderFPersons();updateLiveBal();
+    };
+  });
+}
+/* bilanțul „în timp real" al zilei pentru persoanele selectate */
+function updateLiveBal(){
+  var el=document.getElementById("liveBal");
+  if(!F.persons.length){el.style.display="none";return;}
+  var d=document.getElementById("fDate").value||S.date;
+  ensureRows(d,d).then(function(){
+    var parts=F.persons.map(function(p){
+      var st=statsOf(rowsIn(d,d,p));
+      return esc(p)+": "+(st.bal>0?"+":"")+ron(st.bal);
+    });
+    el.style.display="";
+    el.innerHTML="<b>Bilanțul zilei ("+d+")</b> · "+parts.join(" · ");
+  });
+}
+document.getElementById("fDate").onchange=updateLiveBal;
+
+/* status sarcină + penalizare propusă din catalog */
+document.getElementById("stOk").onclick=function(){F.status="Îndeplinită";syncStatus();};
+document.getElementById("stNo").onclick=function(){F.status="Neîndeplinită";syncStatus();suggestPen();};
+function syncStatus(){
+  document.getElementById("stOk").classList.toggle("sel",F.status==="Îndeplinită");
+  document.getElementById("stNo").classList.toggle("sel",F.status==="Neîndeplinită");
+  document.getElementById("penWrap").style.display=F.status==="Neîndeplinită"?"":"none";
+}
+function suggestPen(){
+  var t=document.getElementById("fTask").value.trim().toLowerCase();
+  var hit=S.catalog.find(function(c){return c.tip==="Penalizare"&&c.denumire.toLowerCase()===t;})
+       ||S.catalog.find(function(c){return c.tip==="Penalizare"&&c.denumire.toLowerCase()==="sarcină neîndeplinită";});
+  if(hit){document.getElementById("fPenVal").value=hit.valoare;
+    document.getElementById("penHint").textContent="Propus din catalog: "+hit.denumire+" — "+hit.valoare+" RON. Poți modifica.";}
+}
+document.getElementById("fTask").addEventListener("change",function(){if(F.status==="Neîndeplinită")suggestPen();});
+
+/* medie live la vânzări */
+["fSales","fTrans"].forEach(function(id){
+  document.getElementById(id).addEventListener("input",function(){
+    var s=Number(document.getElementById("fSales").value)||0,t=Number(document.getElementById("fTrans").value)||0;
+    document.getElementById("avgHint").textContent="Medie / tranzacție: "+(t?ron(s/t):"—");
+  });
+});
+
+/* poze: max 5, micșorate înainte de upload */
+var pendingFiles=[];
+document.getElementById("fPhotos").addEventListener("change",function(){
+  pendingFiles=Array.prototype.slice.call(this.files,0,5);
+  if(this.files.length>5)toast("Maxim 5 poze — le-am păstrat pe primele 5.");
+  var th=document.getElementById("thumbs");th.innerHTML="";
+  pendingFiles.forEach(function(f){
+    var img=document.createElement("img");img.src=URL.createObjectURL(f);th.appendChild(img);
+  });
+});
+function shrink(file){
+  return new Promise(function(res){
+    var img=new Image();
+    img.onload=function(){
+      var M=1280,w=img.width,h=img.height;
+      if(w>M||h>M){var k=M/Math.max(w,h);w=Math.round(w*k);h=Math.round(h*k);}
+      var c=document.createElement("canvas");c.width=w;c.height=h;
+      c.getContext("2d").drawImage(img,0,0,w,h);
+      res(c.toDataURL("image/jpeg",.82));
+    };
+    img.src=URL.createObjectURL(file);
+  });
+}
+
+/* salvare */
+document.getElementById("btnSave").onclick=function(){
+  var btn=this;
+  if(!F.persons.length)return toast("Alege cel puțin o persoană.");
+  var data=document.getElementById("fDate").value||S.date;
+  var note=document.getElementById("fNote").value.trim();
+  var entry={data:data,persoane:F.persons,tip:F.tip,comentariu:note,poze:[]};
+  if(F.tip==="Sarcina"){
+    entry.detaliu=document.getElementById("fTask").value.trim();
+    if(!entry.detaliu)return toast("Scrie sarcina.");
+    entry.status=F.status;
+  }else if(F.tip==="Bonus"||F.tip==="Penalizare"){
+    entry.detaliu=document.getElementById("fReason").value.trim();
+    entry.valoare=Number(document.getElementById("fVal").value)||0;
+    if(!entry.detaliu)return toast("Scrie motivul.");
+    if(entry.valoare<=0)return toast("Valoarea trebuie să fie peste 0.");
+  }else{
+    entry.valoare=Number(document.getElementById("fSales").value)||0;
+    entry.tranzactii=Number(document.getElementById("fTrans").value)||0;
+    entry.detaliu="Vânzări zilnice";
+  }
+  btn.disabled=true;btn.textContent="Se salvează…";
+  var folder=document.getElementById("fFolder").value;
+  var upl=Promise.resolve();
+  if(F.tip!=="Vanzari"&&pendingFiles.length){
+    upl=pendingFiles.reduce(function(chain,f){
+      return chain.then(function(){return shrink(f);})
+        .then(function(du){return api("uploadPhoto",{pin:S.pin,photo:du,folder:folder,date:data});})
+        .then(function(r){entry.poze.push(r.url);});
+    },Promise.resolve());
+  }
+  upl.then(function(){ return api("addEntry",{pin:S.pin,entry:entry}); })
+  .then(function(){
+    // sarcină neîndeplinită cu penalizare financiară → creează și penalizările
+    var pv=Number(document.getElementById("fPenVal").value)||0;
+    if(F.tip==="Sarcina"&&F.status==="Neîndeplinită"&&pv>0){
+      return api("addEntry",{pin:S.pin,entry:{data:data,persoane:F.persons,tip:"Penalizare",
+        detaliu:entry.detaliu,valoare:pv,comentariu:"Penalizare pentru sarcină neîndeplinită."+(note?" "+note:""),
+        poze:entry.poze}});
+    }
+  })
+  .then(function(){
+    delete S.rows[ymOf(data)];
+    pendingFiles=[];closeSheets();toast("Salvat ✓");renderAll();
+  })
+  .catch(function(e){toast("Eroare: "+e);})
+  .finally(function(){btn.disabled=false;btn.textContent="Salvează";});
+};
+
+/* ============ catalog ============ */
+function openCatalog(){
+  if(!S.pin)return;
+  var c=document.getElementById("catRows");
+  c.innerHTML="";
+  S.catalog.forEach(function(x){addCatRow(x);});
+  openSheet(catSheet);
+}
+function addCatRow(x){
+  x=x||{tip:"Penalizare",denumire:"",valoare:0};
+  var d=document.createElement("div");d.className="catrow";
+  d.innerHTML='<select><option'+(x.tip==="Penalizare"?" selected":"")+'>Penalizare</option>'+
+    '<option'+(x.tip==="Bonus"?" selected":"")+'>Bonus</option></select>'+
+    '<input value="'+esc(x.denumire)+'" placeholder="Denumire">'+
+    '<input type="number" value="'+x.valoare+'" min="0">'+
+    '<button class="del">✕</button>';
+  d.querySelector(".del").onclick=function(){d.remove();};
+  document.getElementById("catRows").appendChild(d);
+}
+document.getElementById("btnCatAdd").onclick=function(){addCatRow();};
+document.getElementById("btnCatClose").onclick=closeSheets;
+document.getElementById("btnCatSave").onclick=function(){
+  var cat=[];
+  document.querySelectorAll("#catRows .catrow").forEach(function(r){
+    var i=r.querySelectorAll("select,input");
+    if(i[1].value.trim())cat.push({tip:i[0].value,denumire:i[1].value.trim(),valoare:Number(i[2].value)||0});
+  });
+  api("saveCatalog",{pin:S.pin,catalog:cat}).then(function(r){
+    S.catalog=r.catalog;refreshCatLists();closeSheets();toast("Catalog salvat ✓");
+  }).catch(function(e){toast(e);});
+};
+function refreshCatLists(){
+  document.getElementById("catPen").innerHTML=
+    S.catalog.filter(function(c){return c.tip==="Penalizare";})
+      .map(function(c){return '<option value="'+esc(c.denumire)+'">';}).join("");
+}
+
+/* ============ pornire ============ */
+document.getElementById("datePick").value=S.date;
+api("init").then(function(r){
+  S.team=r.team;S.catalog=r.catalog;S.date=S.date||r.today;
+  renderPersonChips();refreshCatLists();setMode();
+  if(S.pin){ api("verifyPin",{pin:S.pin}).then(function(v){ if(!v.valid){S.pin=null;ssDel("sendPin");setMode();} }); }
+  renderAll();
+  document.getElementById("loading").style.display="none";
+}).catch(function(e){
+  document.getElementById("loading").innerHTML='<div class="empty">Nu m-am putut conecta.<br>'+esc(String(e))+'</div>';
+});
+</script>
+</body>
+</html>

@@ -30,6 +30,7 @@ Categoria se poate repeta pe fiecare rând. Primul rând e antet. Atât — cân
 1. Mergi pe [script.google.com](https://script.google.com) → **New project**.
 2. Șterge tot și lipește conținutul din `Code.gs`.
 3. Sus în `CONFIG`, completează **`REPORT_EMAIL`** cu adresa unde vrei raportul. Verifică și `PRODUCTS_SHEET_ID`.
+3b. **PIN-ul de manager:** în editorul Apps Script → ⚙ **Project Settings** → secțiunea **Script Properties** → **Add script property** → cheia `MANAGER_PIN`, valoarea fiind codul dorit (ex. `1234`). Dacă nu adaugi nimic, rămâne implicit `1234`. PIN-ul nu mai există nicăieri în `index.html` — e verificat doar pe server.
 4. **Deploy → New deployment** → tip **Web app**:
    - *Execute as:* **Me**
    - *Who has access:* **Anyone**
@@ -50,7 +51,7 @@ const CONFIG = {
 };
 ```
 
-Tot acolo poți schimba `MANAGER_PIN` (PIN-ul de manager).
+> PIN-ul de manager se setează **în backend** (vezi pasul 3b mai sus), nu în `index.html` — așa rămâne ascuns clienților aplicației.
 
 ---
 
@@ -78,16 +79,17 @@ Tot acolo poți schimba `MANAGER_PIN` (PIN-ul de manager).
 1. **Deschizi app** → alegi cine lucrează + zona fiecăruia → *Continuă*.
 2. **Checklist de dimineață** → tura nu pornește până nu e bifat tot → *Începe tura*.
 3. **Dashboard** toată ziua; reminderele apar singure ca pop-up; *Pagina zilei* are taskurile zilei.
-4. **De la 22:00** apeși *Închide tura* → trece prin porți: **Inventar → Consum & pierderi → Casă (Z + sold) → Checklist final** → trimite raportul.
-5. Dacă nu s-a apăsat, între **23:50 și 23:56** sună din 2 în 2 min, iar la **23:58** raportul pleacă automat.
+4. Oricând apeși *Închide tura* → trece prin porți: **Consum & pierderi → Casă (Z + sold) → Checklist final** → trimite raportul. Stocurile/inventarul se completează liber, din dashboard.
+5. Dacă tura nu e închisă, între **23:50 și 23:56** sună un reminder din 2 în 2 min. Raportul pleacă **doar la apăsarea butonului** — nu există trimitere automată.
 
 ---
 
 ## Note și limitări (de știut)
 
 - **Remindere & sunet:** funcționează cât aplicația e deschisă pe tabletă (cazul tău — tableta stă în locație). Notificări când app-ul e complet închis ar necesita un pas în plus.
-- **PIN-ul de manager** e momentan în cod (client). Pentru securitate reală, mutarea lui în backend e un pas ușor de făcut ulterior.
+- **PIN-ul de manager** e verificat de backend (`MANAGER_PIN` din Script Properties). Apăsarea ⚙ din aplicație cere PIN-ul înainte de a deschide ecranul de administrare a reminderelor. Fără `BACKEND_URL` configurat, accesul nu poate fi protejat — aplicația afișează un avertisment și lasă accesul deschis.
 - **Pozele** se urcă în Drive doar cu backend-ul setat; structura `Poze/[Categorie]/[Data]/[Fereastra]/` se creează automat.
+- **Reminderele** sunt editabile din aplicație (⚙ → Manager · Remindere): poți adăuga, opri/porni, modifica sau șterge orice reminder. Lista personalizată se ține în `localStorage`, separat de cea implicită din cod.
 
 ---
 
@@ -97,6 +99,5 @@ Tot acolo poți schimba `MANAGER_PIN` (PIN-ul de manager).
 - Itemizarea pregătirii de bar de dimineață
 - Verificare Total Z vs Z printat
 - Diferență casă (numărat fizic vs sold), observații pentru mâine
-- Editarea reminderelor din interfață, protejată cu PIN
 
 Dă acest folder + `SEND_Specificatie_Aplicatie.md` lui Claude Code și poți construi mai departe oricare dintre ele.
